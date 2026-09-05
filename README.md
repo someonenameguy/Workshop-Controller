@@ -132,9 +132,13 @@ Have mods downloaded outside Steam with names like `2009463077` or `Mod 36069884
 To ship a single self-contained application folder that users can run without installing Python or dependencies:
 
 ### On Windows
-Run:
+Run (Command Prompt / PowerShell):
 ```cmd
 packaging\build_windows.bat
+```
+Or (Git Bash / MSYS2 / bash):
+```bash
+./packaging/build_windows.sh
 ```
 Output executable: `dist/RimWorldWorkshopController/RimWorldWorkshopController.exe`.
 
@@ -163,7 +167,8 @@ Output executable: `dist/RimWorldWorkshopController/RimWorldWorkshopController`.
 ├── packaging/               # Standalone distribution build pipeline
 │   ├── build.py             # PyInstaller automated packaging script
 │   ├── build_linux.sh       # Linux one-click build script
-│   └── build_windows.bat    # Windows one-click build script
+│   ├── build_windows.bat    # Windows batch build script
+│   └── build_windows.sh     # Windows bash build script
 ├── src/
 │   ├── api/
 │   │   └── routes.py        # FastAPI REST API endpoints & WebSocket handler

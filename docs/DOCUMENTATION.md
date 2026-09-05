@@ -519,9 +519,13 @@ Clients receive real-time JSON packets:
 The controller includes an automated PyInstaller packaging pipeline in `packaging/`:
 
 ### Building Standalone Executables:
-- **Windows**:
+- **Windows (Command Prompt / PowerShell)**:
   ```cmd
   packaging\build_windows.bat
+  ```
+- **Windows (Git Bash / MSYS2 / bash)**:
+  ```bash
+  ./packaging/build_windows.sh
   ```
 - **Linux / macOS**:
   ```bash
