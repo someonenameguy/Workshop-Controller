@@ -185,7 +185,7 @@
      ========================================================================== */
   const PlatformTabsManager = {
     init() {
-      const tabs = document.querySelectorAll('.platform-tab');
+      const tabs = document.querySelectorAll('.platform-tab, .platform-tab-btn');
       const contents = document.querySelectorAll('.platform-content');
 
       if (!tabs.length) return;
@@ -196,11 +196,15 @@
           if (!platform) return;
 
           // Deactivate all
-          tabs.forEach((t) => t.classList.remove('active'));
+          tabs.forEach((t) => {
+            t.classList.remove('active');
+            t.setAttribute('aria-selected', 'false');
+          });
           contents.forEach((c) => c.classList.remove('active'));
 
           // Activate selected
           tab.classList.add('active');
+          tab.setAttribute('aria-selected', 'true');
           const targetContent = document.getElementById(`platform-${platform}`);
           if (targetContent) {
             targetContent.classList.add('active');
@@ -443,6 +447,33 @@
       }
     },
 
+    // Concurrency Worker Pool Settings
+    concurrency: 4,
+
+    // Loose folders database for folder healer tab across games
+    looseFoldersByGame: {
+      '294100': [
+        { folder: '2009463077', title: 'Combat Extended', steamId: '2009463077', action: 'Generate PublishedFileId & rename' },
+        { folder: 'Mod 3606988448', title: 'Vanilla Weapons Expanded', steamId: '3606988448', action: 'Strip prefix & repair metadata' },
+        { folder: 'HugsLib_unzip', title: 'HugsLib', steamId: '818773962', action: 'Clean folder name & link Steam ID' }
+      ],
+      '281990': [
+        { folder: 'gigastructures_extracted', title: 'Gigastructural Engineering', steamId: '1121692237', action: 'Generate PublishedFileId & rename' },
+        { folder: 'Mod_1805627705', title: 'Planetary Diversity', steamId: '1805627705', action: 'Link Steam ID & rebuild manifest' },
+        { folder: 'UI_Overhaul_Dynamic_Loose', title: 'UI Overhaul Dynamic', steamId: '1623423360', action: 'Normalize folder & link ID' }
+      ],
+      '255710': [
+        { folder: 'MoveIt_v2_unpacked', title: 'Move It', steamId: '1619685021', action: 'Format folder & link Workshop ID' },
+        { folder: 'TMPE_traffic_raw', title: 'Traffic Manager: President Edition', steamId: '1637663252', action: 'Generate PublishedFileId.txt' },
+        { folder: 'Harmony_Cities_loose', title: 'Harmony 2.2-2', steamId: '2040656402', action: 'Fix casing & restore manifest' }
+      ],
+      '108600': [
+        { folder: 'TrueMusic_custom_loose', title: 'True Music', steamId: '2613146550', action: 'Generate PublishedFileId & rename' },
+        { folder: 'common_sense_41_extracted', title: 'Common Sense', steamId: '2875848298', action: 'Link Steam ID & rebuild manifest' },
+        { folder: 'FilibusterCars_unzip', title: 'Filibuster Rhymes Used Cars', steamId: '1510950729', action: 'Repair folder structure & link ID' }
+      ]
+    },
+
     // Dynamic Download Queue
     queueItems: [
       {
@@ -461,7 +492,7 @@
         worker: 'Worker 2',
         status: 'staged',
         progress: 100,
-        speed: 'Staged'
+        speed: 'Staged in temp_workers/'
       },
       {
         id: 'q-3',
@@ -470,7 +501,7 @@
         worker: 'Worker 3',
         status: 'completed',
         progress: 100,
-        speed: 'Deployed'
+        speed: 'Deployed to mods/'
       }
     ],
 
@@ -483,26 +514,32 @@
       { tag: 'BackupEngine', text: 'Archived existing mod to backups/CombatExtended_2026-09-05.zip' },
       { tag: 'ModScanner', text: 'Parsed About.xml: matched PublishedFileId 2023507013' },
       { tag: 'WorkerPool', text: 'Download completed. Atomic move from temp_workers/ to mods/ successful.' },
-      { tag: 'WebSocket', text: 'Broadcasted queue update to all active browser clients (count: 1)' }
+      { tag: 'WebSocket', text: 'Broadcasted queue update to all active browser clients (count: 1)' },
+      { tag: 'FastAPI', text: 'GET /api/v1/mods HTTP/1.1 200 OK (2.4ms)' },
+      { tag: 'SteamAPI', text: 'IPublishedFileService/QueryFiles responded with 20 items (cache hit)' },
+      { tag: 'MetadataCache', text: 'Persisted 24 mod state records to data/workshop_cache.json' }
     ],
     logIndex: 0,
+    allLogs: [],
 
     init() {
       this.initTabs();
       this.initProfileSwitcher();
+      this.populateTagFilter();
       this.initModsTab();
       this.initQueueTab();
       this.initHealerTab();
       this.initSettingsTab();
       this.initLogsTab();
       this.initHeaderButtons();
+      this.renderWorkerCards();
     },
 
     /* --------------------------------------------------------------------------
-       4.1 Tab Switching
+       4.1 Tab Switching (Accessible with ARIA sync)
        -------------------------------------------------------------------------- */
     initTabs() {
-      const tabs = document.querySelectorAll('.demo-tab');
+      const tabs = document.querySelectorAll('.demo-tab, .demo-tab-btn');
       const panes = document.querySelectorAll('.demo-pane');
 
       tabs.forEach((tab) => {
@@ -510,10 +547,14 @@
           const targetTab = tab.getAttribute('data-tab');
           if (!targetTab) return;
 
-          tabs.forEach((t) => t.classList.remove('active'));
+          tabs.forEach((t) => {
+            t.classList.remove('active');
+            t.setAttribute('aria-selected', 'false');
+          });
           panes.forEach((p) => p.classList.remove('active'));
 
           tab.classList.add('active');
+          tab.setAttribute('aria-selected', 'true');
           const targetPane = document.getElementById(`demo-pane-${targetTab}`);
           if (targetPane) {
             targetPane.classList.add('active');
@@ -523,28 +564,23 @@
     },
 
     /* --------------------------------------------------------------------------
-       4.2 Profile Switcher
+       4.2 Multi-Game Profile Switcher
        -------------------------------------------------------------------------- */
     initProfileSwitcher() {
-      const select = document.getElementById('demo-profile-select');
+      const headerSelect = document.getElementById('demo-profile-select');
+      const settingsSelect = document.getElementById('demo-settings-game-select');
 
-      if (!select) return;
-
-      select.addEventListener('change', (e) => {
-        const appId = e.target.value;
+      const handleProfileChange = (appId) => {
+        if (!appId) return;
         this.switchGameProfile(appId);
-      });
+      };
 
-      // Also support settings preset buttons if present
-      const settingsSelect = document.querySelector('#demo-pane-settings select');
+      if (headerSelect) {
+        headerSelect.addEventListener('change', (e) => handleProfileChange(e.target.value));
+      }
+
       if (settingsSelect) {
-        settingsSelect.addEventListener('change', (e) => {
-          const match = e.target.value.match(/\((\d+)\)/);
-          if (match && match[1]) {
-            if (select) select.value = match[1];
-            this.switchGameProfile(match[1]);
-          }
-        });
+        settingsSelect.addEventListener('change', (e) => handleProfileChange(e.target.value));
       }
     },
 
@@ -553,66 +589,99 @@
       this.activeAppId = appId;
       const game = this.games[appId];
 
-      // Update header badge
+      // Synchronize header badge
       const headerGame = document.getElementById('demo-header-game');
       if (headerGame) {
         headerGame.textContent = `${game.name} (AppID: ${appId})`;
       }
 
-      // Update settings path if present
-      const settingsPath = document.querySelector('#demo-pane-settings input[readonly]');
+      // Synchronize select dropdowns
+      const headerSelect = document.getElementById('demo-profile-select');
+      if (headerSelect && headerSelect.value !== appId) {
+        headerSelect.value = appId;
+      }
+      const settingsSelect = document.getElementById('demo-settings-game-select');
+      if (settingsSelect && settingsSelect.value !== appId) {
+        settingsSelect.value = appId;
+      }
+
+      // Synchronize settings directory path
+      const settingsPath = document.getElementById('demo-settings-path-input');
       if (settingsPath) {
         settingsPath.value = game.path;
       }
 
-      // Re-render mods
+      // Populate tag filters dynamically for the active game
+      this.populateTagFilter();
+
+      // Reset search/filter inputs
+      const searchInput = document.getElementById('demo-search-input');
+      const statusSelect = document.getElementById('demo-status-select');
+      if (searchInput) searchInput.value = '';
+      if (statusSelect) statusSelect.value = 'all';
+
+      // Re-render mods grid
       this.renderMods();
 
-      Toast.show(`🎮 Switched active profile to ${game.name} (${appId})`, 'info');
-      this.appendConsoleLog(`[ProfileManager] Switched active profile to ${game.name} (AppID: ${appId})`);
+      Toast.show(`🎮 Switched active profile to <strong>${game.name}</strong> (${appId})`, 'info');
+      this.appendConsoleLog('ProfileManager', `Switched active profile to ${game.name} (AppID: ${appId}) — Target: ${game.path}`);
+    },
+
+    populateTagFilter() {
+      const tagSelect = document.getElementById('demo-tag-select');
+      if (!tagSelect) return;
+
+      const currentMods = this.games[this.activeAppId].mods;
+      const tagSet = new Set();
+      currentMods.forEach((m) => {
+        if (Array.isArray(m.tags)) {
+          m.tags.forEach((t) => tagSet.add(t));
+        }
+      });
+
+      tagSelect.innerHTML = '<option value="">All Tags</option>';
+      Array.from(tagSet).sort().forEach((tag) => {
+        const opt = document.createElement('option');
+        opt.value = tag;
+        opt.textContent = tag;
+        tagSelect.appendChild(opt);
+      });
     },
 
     /* --------------------------------------------------------------------------
        4.3 Installed Mods Tab
        -------------------------------------------------------------------------- */
     initModsTab() {
-      // Search input
       const searchInput = document.getElementById('demo-search-input');
       if (searchInput) {
         searchInput.addEventListener('input', () => this.filterMods());
       }
 
-      // Status filter
       const statusSelect = document.getElementById('demo-status-select');
       if (statusSelect) {
         statusSelect.addEventListener('change', () => this.filterMods());
       }
 
-      // Tag filter
       const tagSelect = document.getElementById('demo-tag-select');
       if (tagSelect) {
         tagSelect.addEventListener('change', () => this.filterMods());
       }
 
-      // Check for Updates button
       const checkBtn = document.getElementById('demo-btn-check-updates');
       if (checkBtn) {
         checkBtn.addEventListener('click', () => this.checkForUpdates());
       }
 
-      // Update All Outdated button
       const updateAllBtn = document.getElementById('demo-btn-update-all');
       if (updateAllBtn) {
         updateAllBtn.addEventListener('click', () => this.updateAllOutdated());
       }
 
-      // Quick update banner button
       const quickUpdateBtn = document.getElementById('demo-btn-quick-update');
       if (quickUpdateBtn) {
         quickUpdateBtn.addEventListener('click', () => this.updateAllOutdated());
       }
 
-      // Initial render
       this.renderMods();
     },
 
@@ -630,7 +699,7 @@
 
       if (listToRender.length === 0) {
         grid.innerHTML = `
-          <div class="demo-empty-state" style="grid-column: 1 / -1; padding: 40px 20px; text-align: center; color: #94a3b8;">
+          <div class="demo-empty-state" style="grid-column: 1 / -1; padding: 40px 20px; text-align: center; color: var(--text-muted);">
             <div style="font-size: 2rem; margin-bottom: 8px;">🔍</div>
             <strong>No matching mods found</strong>
             <p style="font-size: 0.85rem; margin-top: 4px;">Try loosening your search or tag filters.</p>
@@ -673,8 +742,8 @@
                 <div class="mod-actions">
                   ${
                     isOutdated
-                      ? `<button class="btn-demo btn-demo-amber btn-xs btn-mod-update" data-id="${mod.id}">⬆ Update</button>`
-                      : `<button class="btn-demo btn-demo-secondary btn-xs btn-mod-view" data-id="${mod.id}">📁 Files</button>`
+                      ? `<button class="btn btn-warning btn-xs btn-mod-update" data-id="${mod.id}">⬆ Update</button>`
+                      : `<button class="btn btn-secondary btn-xs btn-mod-view" data-id="${mod.id}">📁 Files</button>`
                   }
                 </div>
               </div>
@@ -691,12 +760,12 @@
         });
       });
 
-      // Attach files click
+      // Attach view files buttons
       grid.querySelectorAll('.btn-mod-view').forEach((btn) => {
         btn.addEventListener('click', (e) => {
           const modId = e.currentTarget.getAttribute('data-id');
           const mod = currentMods.find((m) => m.id === modId);
-          Toast.show(`Opened files for <strong>${mod ? mod.title : modId}</strong>`, 'info');
+          Toast.show(`Opened folder for <strong>${mod ? mod.title : modId}</strong> in <code>${this.games[this.activeAppId].path}</code>`, 'info');
         });
       });
     },
@@ -713,15 +782,13 @@
       const currentMods = this.games[this.activeAppId].mods;
 
       const filtered = currentMods.filter((mod) => {
-        // Search filter
         const matchesQuery =
           !query ||
           mod.title.toLowerCase().includes(query) ||
           mod.author.toLowerCase().includes(query) ||
           mod.id.includes(query) ||
-          mod.tags.some((t) => t.toLowerCase().includes(query));
+          (Array.isArray(mod.tags) && mod.tags.some((t) => t.toLowerCase().includes(query)));
 
-        // Status filter
         let matchesStatus = true;
         if (status === 'updates') {
           matchesStatus = mod.status === 'update-available';
@@ -729,10 +796,9 @@
           matchesStatus = mod.steam === true;
         }
 
-        // Tag filter
         let matchesTag = true;
         if (tag) {
-          matchesTag = mod.tags.includes(tag);
+          matchesTag = Array.isArray(mod.tags) && mod.tags.includes(tag);
         }
 
         return matchesQuery && matchesStatus && matchesTag;
@@ -754,19 +820,16 @@
         checkBtn.disabled = false;
 
         const currentMods = this.games[this.activeAppId].mods;
-        // Make at least 2 mods outdated
         if (currentMods.length >= 2) {
           currentMods[0].status = 'update-available';
           currentMods[1].status = 'update-available';
         }
 
-        // Reveal banner
         const banner = document.getElementById('demo-updates-banner');
         if (banner) {
           banner.style.display = 'flex';
         }
 
-        // Reveal update all button
         const updateAllBtn = document.getElementById('demo-btn-update-all');
         const outdatedCount = document.getElementById('demo-outdated-count');
         const count = currentMods.filter((m) => m.status === 'update-available').length;
@@ -777,7 +840,7 @@
         this.filterMods();
 
         Toast.show(`🔔 Steam Workshop check finished: ${count} updates found!`, 'warning');
-        this.appendConsoleLog(`[SteamAPI] QueryFiles metadata returned: ${count} outdated mods flagged for update`);
+        this.appendConsoleLog('SteamAPI', `QueryFiles API scan returned: ${count} outdated mods flagged for update`);
       }, 550);
     },
 
@@ -804,7 +867,6 @@
           }
         });
 
-        // Hide banner & update all button
         const banner = document.getElementById('demo-updates-banner');
         if (banner) banner.style.display = 'none';
 
@@ -821,8 +883,8 @@
         this.filterMods();
 
         Toast.show(`✨ ${count} mods updated! Backups saved to <code>backups/</code>`, 'success', 3500);
-        this.appendConsoleLog(`[BackupEngine] Created automatic zip rollback archives in backups/`);
-        this.appendConsoleLog(`[WorkerPool] Batch update completed successfully: ${count} mods up to date.`);
+        this.appendConsoleLog('BackupEngine', `Created automatic zip rollback archives in backups/`);
+        this.appendConsoleLog('WorkerPool', `Batch update completed successfully: ${count} mods up to date.`);
       }, 900);
     },
 
@@ -834,7 +896,6 @@
       mod.status = 'up-to-date';
       this.filterMods();
 
-      // Check if any remain outdated
       const remaining = currentMods.filter((m) => m.status === 'update-available').length;
       const banner = document.getElementById('demo-updates-banner');
       const updateAllBtn = document.getElementById('demo-btn-update-all');
@@ -847,11 +908,11 @@
       }
 
       Toast.show(`✨ <strong>${mod.title}</strong> updated to latest Steam version!`, 'success');
-      this.appendConsoleLog(`[WorkerPool] Updated mod ${mod.title} (${mod.id}) - backup archived.`);
+      this.appendConsoleLog('WorkerPool', `Updated mod ${mod.title} (${mod.id}) - backup archived.`);
     },
 
     /* --------------------------------------------------------------------------
-       4.4 Download Queue Tab
+       4.4 Download Queue & Isolated Staging Workers
        -------------------------------------------------------------------------- */
     initQueueTab() {
       const addBtn = document.getElementById('demo-btn-add-queue');
@@ -867,7 +928,134 @@
         });
       }
 
+      // Quick-add pill triggers
+      const quickPills = document.querySelectorAll('.quick-add-pill');
+      quickPills.forEach((pill) => {
+        pill.addEventListener('click', (e) => {
+          e.preventDefault();
+          const workshopId = pill.getAttribute('data-quick-id');
+          const title = pill.getAttribute('data-quick-title') || `Workshop Item #${workshopId}`;
+          this.dispatchDownload(workshopId, title);
+        });
+      });
+
+      // Clear completed tasks button
+      const clearBtn = document.getElementById('demo-btn-clear-completed');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          const initialLen = this.queueItems.length;
+          this.queueItems = this.queueItems.filter((item) => item.status === 'downloading');
+          const clearedCount = initialLen - this.queueItems.length;
+          this.renderQueue();
+          Toast.show(`Cleared ${clearedCount} completed task${clearedCount === 1 ? '' : 's'} from queue.`, 'info');
+          this.appendConsoleLog('QueueManager', `Purged ${clearedCount} finished tasks from staging history.`);
+        });
+      }
+
       this.renderQueue();
+    },
+
+    addToQueue() {
+      const input = document.getElementById('demo-queue-input');
+      if (!input) return;
+
+      const rawVal = input.value.trim();
+      if (!rawVal) {
+        Toast.show('Please enter a Steam Workshop ID or URL!', 'warning');
+        return;
+      }
+
+      const match = rawVal.match(/id=(\d+)/) || rawVal.match(/(\d{6,12})/);
+      const workshopId = match ? match[1] : `${Math.floor(1000000000 + Math.random() * 900000000)}`;
+      const title = `Workshop Item #${workshopId.slice(0, 6)}`;
+      input.value = '';
+
+      this.dispatchDownload(workshopId, title);
+    },
+
+    dispatchDownload(workshopId, title) {
+      // Pick next worker based on concurrency pool
+      const workerNum = (this.queueItems.length % this.concurrency) + 1;
+      const newItem = {
+        id: `q-${Date.now()}`,
+        title: title,
+        workshopId: workshopId,
+        worker: `Worker ${workerNum}`,
+        status: 'downloading',
+        progress: 0,
+        speed: '28.4 MB/s'
+      };
+
+      this.queueItems.unshift(newItem);
+      this.renderQueue();
+
+      Toast.show(`⚡ Dispatched <strong>${title}</strong> to Worker ${workerNum}!`, 'info');
+      this.appendConsoleLog('WorkerPool', `Dispatched ${workshopId} to Worker ${workerNum} in staging directory temp_workers/worker_${workerNum}`);
+
+      this.simulateDownload(newItem);
+    },
+
+    simulateDownload(item) {
+      const speeds = ['19.4 MB/s', '24.1 MB/s', '31.5 MB/s', '28.9 MB/s', '35.0 MB/s'];
+      const speedVal = document.getElementById('demo-speed-val');
+
+      const interval = setInterval(() => {
+        if (item.progress < 100) {
+          item.progress = Math.min(100, item.progress + Math.floor(Math.random() * 16 + 12));
+          const randomSpeed = speeds[Math.floor(Math.random() * speeds.length)];
+          item.speed = randomSpeed;
+          if (speedVal) speedVal.textContent = randomSpeed;
+
+          const el = document.getElementById(item.id);
+          if (el) {
+            const fill = el.querySelector('.queue-progress-bar-fill');
+            const speedLbl = el.querySelector('.queue-speed-label');
+            const badge = el.querySelector('.badge');
+            if (fill) fill.style.width = `${item.progress}%`;
+            if (speedLbl) speedLbl.textContent = item.speed;
+            if (badge) badge.textContent = `⚡ Downloading (${item.progress}%)`;
+          }
+        } else {
+          clearInterval(interval);
+          item.status = 'staged';
+          item.speed = 'Staged in temp_workers/';
+          this.renderQueue();
+
+          Toast.show(`📦 <strong>${item.title}</strong> staged in temp_workers/!`, 'info');
+          this.appendConsoleLog('SteamCMD', `${item.worker}: Mod ${item.workshopId} depot chunk verified and staged in isolated workspace`);
+
+          // Automatically deploy to installed mods after brief validation
+          setTimeout(() => {
+            item.status = 'completed';
+            item.speed = 'Deployed to mods/';
+            
+            // Add to active game mods if not already present
+            const currentMods = this.games[this.activeAppId].mods;
+            const existing = currentMods.find((m) => m.id === item.workshopId);
+            if (!existing) {
+              currentMods.unshift({
+                id: item.workshopId,
+                title: item.title,
+                author: 'Workshop Creator',
+                tags: ['Installed', 'New'],
+                status: 'up-to-date',
+                size: '22.4 MB',
+                desc: 'Freshly downloaded and deployed via SteamCMD parallel worker staging.',
+                icon: '📦',
+                steam: true
+              });
+            } else {
+              existing.status = 'up-to-date';
+            }
+
+            this.renderQueue();
+            this.renderMods();
+
+            Toast.show(`✨ <strong>${item.title}</strong> deployed to <code>${this.games[this.activeAppId].path}</code>!`, 'success', 3500);
+            this.appendConsoleLog('Deployer', `Atomic move: temp_workers/${item.worker.toLowerCase().replace(' ', '_')} -> ${this.games[this.activeAppId].path}`);
+          }, 1200);
+        }
+      }, 250);
     },
 
     renderQueue() {
@@ -875,15 +1063,15 @@
       const badge = document.getElementById('demo-queue-badge');
       if (!list) return;
 
-      const activeCount = this.queueItems.filter((i) => i.status === 'downloading').length;
       if (badge) badge.textContent = this.queueItems.length;
 
       if (this.queueItems.length === 0) {
         list.innerHTML = `
-          <div class="demo-empty-state" style="padding: 30px; text-align: center; color: #94a3b8;">
-            No items in download queue. Paste a Workshop URL or ID above!
+          <div class="demo-empty-state" style="padding: 30px; text-align: center; color: var(--text-muted);">
+            No items in download queue. Paste a Workshop URL or click one of the quick test buttons above!
           </div>
         `;
+        this.renderWorkerCards();
         return;
       }
 
@@ -923,76 +1111,60 @@
           `;
         })
         .join('');
+
+      this.renderWorkerCards();
     },
 
-    addToQueue() {
-      const input = document.getElementById('demo-queue-input');
-      if (!input) return;
-
-      const rawVal = input.value.trim();
-      if (!rawVal) {
-        Toast.show('Please enter a Steam Workshop ID or URL!', 'warning');
-        return;
-      }
-
-      // Extract ID or use clean number
-      const match = rawVal.match(/id=(\d+)/) || rawVal.match(/(\d{6,12})/);
-      const workshopId = match ? match[1] : `${Math.floor(1000000000 + Math.random() * 900000000)}`;
-      const title = `Workshop Item #${workshopId.slice(0, 6)}`;
-
-      const workerNum = (this.queueItems.length % 4) + 1;
-      const newItem = {
-        id: `q-${Date.now()}`,
-        title: title,
-        workshopId: workshopId,
-        worker: `Worker ${workerNum}`,
-        status: 'downloading',
-        progress: 0,
-        speed: '18.4 MB/s'
-      };
-
-      this.queueItems.unshift(newItem);
-      input.value = '';
-      this.renderQueue();
-
-      Toast.show(`⚡ Added <strong>${title}</strong> to download queue!`, 'info');
-      this.appendConsoleLog(`[WorkerPool] Dispatched ${workshopId} to Worker ${workerNum} in isolated staging directory`);
-
-      // Start animated progress
-      this.simulateDownload(newItem);
-    },
-
-    simulateDownload(item) {
-      const speeds = ['18.4 MB/s', '24.1 MB/s', '31.5 MB/s', '28.9 MB/s', '35.0 MB/s'];
+    renderWorkerCards() {
+      const container = document.getElementById('demo-workers-cards');
+      const activeCountEl = document.getElementById('demo-workers-active-count');
+      const totalCountEl = document.getElementById('demo-workers-total-count');
       const speedVal = document.getElementById('demo-speed-val');
 
-      const interval = setInterval(() => {
-        if (item.progress < 100) {
-          item.progress = Math.min(100, item.progress + Math.floor(Math.random() * 14 + 10));
-          const randomSpeed = speeds[Math.floor(Math.random() * speeds.length)];
-          item.speed = randomSpeed;
-          if (speedVal) speedVal.textContent = randomSpeed;
+      if (totalCountEl) totalCountEl.textContent = this.concurrency;
 
-          // Update element directly for smooth performance
-          const el = document.getElementById(item.id);
-          if (el) {
-            const fill = el.querySelector('.queue-progress-bar-fill');
-            const speedLbl = el.querySelector('.queue-speed-label');
-            const badge = el.querySelector('.badge');
-            if (fill) fill.style.width = `${item.progress}%`;
-            if (speedLbl) speedLbl.textContent = item.speed;
-            if (badge) badge.textContent = `⚡ Downloading (${item.progress}%)`;
-          }
-        } else {
-          clearInterval(interval);
-          item.status = 'staged';
-          item.speed = 'Downloaded & Staged';
-          this.renderQueue();
+      const activeTasks = this.queueItems.filter((i) => i.status === 'downloading');
+      if (activeCountEl) activeCountEl.textContent = Math.min(activeTasks.length, this.concurrency);
 
-          Toast.show(`✨ <strong>${item.title}</strong> downloaded and staged!`, 'success');
-          this.appendConsoleLog(`[SteamCMD] Worker ${item.worker}: Item ${item.workshopId} successfully staged in temp_workers/`);
+      if (speedVal) {
+        speedVal.textContent = activeTasks.length > 0 ? `${(activeTasks.length * 12.8).toFixed(1)} MB/s Aggregate` : 'Idle (0 MB/s)';
+      }
+
+      if (!container) return;
+
+      let cardsHtml = '';
+      for (let i = 1; i <= this.concurrency; i++) {
+        const workerName = `Worker ${i}`;
+        const activeTask = this.queueItems.find((item) => item.worker === workerName && item.status === 'downloading');
+        const stagedTask = this.queueItems.find((item) => item.worker === workerName && item.status === 'staged');
+
+        let statusText = 'Idle';
+        let badgeClass = 'badge-secondary';
+        let detail = 'Awaiting queue dispatch';
+
+        if (activeTask) {
+          statusText = 'Downloading';
+          badgeClass = 'badge-cyan pulse-glow';
+          detail = `${activeTask.title} (${activeTask.progress}%)`;
+        } else if (stagedTask) {
+          statusText = 'Staged';
+          badgeClass = 'badge-warning';
+          detail = `Verifying ${stagedTask.title}`;
         }
-      }, 250);
+
+        cardsHtml += `
+          <div class="worker-card ${activeTask ? 'worker-active' : ''}">
+            <div class="worker-card-header">
+              <span class="worker-name">${workerName}</span>
+              <span class="badge ${badgeClass}">${statusText}</span>
+            </div>
+            <div class="worker-sandbox-path">temp_workers/worker_${i}</div>
+            <div class="worker-detail">${detail}</div>
+          </div>
+        `;
+      }
+
+      container.innerHTML = cardsHtml;
     },
 
     /* --------------------------------------------------------------------------
@@ -1017,20 +1189,22 @@
       const statusText = document.getElementById('demo-healer-status-text');
       const tableWrap = document.getElementById('demo-healer-table-wrap');
       const tbody = document.getElementById('demo-healer-tbody');
+      const repairBtn = document.getElementById('demo-btn-repair-meta');
 
       if (!progressWrap || !progressFill || !statusText) return;
 
-      // Reset state
       progressWrap.style.display = 'block';
       progressFill.style.width = '0%';
-      statusText.textContent = 'Scanning directories for loose and unindexed mod folders...';
+      statusText.textContent = `Scanning ${this.games[this.activeAppId].name} directories for unindexed folders...`;
       if (scanBtn) scanBtn.disabled = true;
+
+      const looseList = this.looseFoldersByGame[this.activeAppId] || this.looseFoldersByGame['294100'];
 
       const steps = [
         { percent: '25%', text: 'Inspecting folder structure and About.xml / modinfo manifests...' },
-        { percent: '60%', text: 'Matching extracted mod titles against live Steam Web API...' },
-        { percent: '90%', text: 'Generating repair actions for missing PublishedFileId.txt...' },
-        { percent: '100%', text: 'Scan complete! 3 loose folders identified.' }
+        { percent: '60%', text: 'Querying Steam Web API for matching workshop metadata...' },
+        { percent: '90%', text: 'Determining missing PublishedFileId.txt and folder normalization paths...' },
+        { percent: '100%', text: `Scan complete! ${looseList.length} loose folders identified.` }
       ];
 
       let stepIndex = 0;
@@ -1045,78 +1219,65 @@
             progressWrap.style.display = 'none';
             if (scanBtn) scanBtn.disabled = false;
 
-            // Populate comparison table
             if (tbody) {
-              tbody.innerHTML = `
-                <tr id="healer-row-1">
-                  <td><code class="code-badge">2009463077</code></td>
-                  <td><strong>Combat Extended</strong></td>
-                  <td><span class="badge badge-cyan">2009463077</span></td>
-                  <td class="action-cell">
-                    <span class="badge badge-warning">Generate PublishedFileId &amp; rename</span>
-                  </td>
-                </tr>
-                <tr id="healer-row-2">
-                  <td><code class="code-badge">Mod 3606988448</code></td>
-                  <td><strong>Vanilla Weapons Expanded</strong></td>
-                  <td><span class="badge badge-cyan">3606988448</span></td>
-                  <td class="action-cell">
-                    <span class="badge badge-warning">Strip prefix &amp; repair metadata</span>
-                  </td>
-                </tr>
-                <tr id="healer-row-3">
-                  <td><code class="code-badge">HugsLib_unzip</code></td>
-                  <td><strong>HugsLib</strong></td>
-                  <td><span class="badge badge-cyan">818773962</span></td>
-                  <td class="action-cell">
-                    <span class="badge badge-warning">Clean folder name &amp; link Steam ID</span>
-                  </td>
-                </tr>
-              `;
+              tbody.innerHTML = looseList
+                .map((item, idx) => `
+                  <tr id="healer-row-${idx}">
+                    <td><code class="code-badge">${item.folder}</code></td>
+                    <td><strong>${item.title}</strong></td>
+                    <td><span class="badge badge-cyan">${item.steamId}</span></td>
+                    <td class="action-cell">
+                      <span class="badge badge-warning">${item.action}</span>
+                    </td>
+                  </tr>
+                `)
+                .join('');
+            }
+
+            if (repairBtn) {
+              repairBtn.innerHTML = '✨ Repair Metadata &amp; Rename Folders';
+              repairBtn.disabled = false;
+              repairBtn.classList.remove('btn-secondary');
+              repairBtn.classList.add('btn-success');
             }
 
             if (tableWrap) tableWrap.style.display = 'block';
-            Toast.show('🔍 Scan complete: 3 loose mod folders detected!', 'info');
-            this.appendConsoleLog(`[ModRefactorer] Found 3 loose folders requiring metadata healing and title normalization.`);
+            Toast.show(`🔍 Scan complete: ${looseList.length} loose mod folders detected in <strong>${this.games[this.activeAppId].name}</strong>!`, 'info');
+            this.appendConsoleLog('ModRefactorer', `Found ${looseList.length} unindexed folders requiring PublishedFileId.txt metadata healing.`);
           }, 400);
         }
-      }, 300);
+      }, 280);
     },
 
     repairAllMetadata() {
       const repairBtn = document.getElementById('demo-btn-repair-meta');
+      const looseList = this.looseFoldersByGame[this.activeAppId] || this.looseFoldersByGame['294100'];
       if (!repairBtn) return;
 
       repairBtn.innerHTML = '<span class="btn-spinner"></span> Repairing & Renaming...';
       repairBtn.disabled = true;
 
-      const rows = [
-        { id: 'healer-row-1', successText: '✓ PublishedFileId: 2009463077 generated & renamed' },
-        { id: 'healer-row-2', successText: '✓ Cleaned to "Vanilla Weapons Expanded"' },
-        { id: 'healer-row-3', successText: '✓ HugsLib metadata linked and synchronized' }
-      ];
-
       let idx = 0;
       const stepInterval = setInterval(() => {
-        if (idx < rows.length) {
-          const row = document.getElementById(rows[idx].id);
+        if (idx < looseList.length) {
+          const row = document.getElementById(`healer-row-${idx}`);
           if (row) {
             const cell = row.querySelector('.action-cell');
             if (cell) {
-              cell.innerHTML = `<span class="badge badge-success">${rows[idx].successText}</span>`;
+              cell.innerHTML = `<span class="badge badge-success">✓ PublishedFileId: ${looseList[idx].steamId} synced &amp; renamed</span>`;
             }
           }
+          this.appendConsoleLog('ModRefactorer', `Healed folder: "${looseList[idx].folder}" -> "${looseList[idx].title}" (ID: ${looseList[idx].steamId})`);
           idx++;
         } else {
           clearInterval(stepInterval);
           repairBtn.innerHTML = '✓ All Folders Healed &amp; Renamed';
-          repairBtn.classList.remove('btn-demo-success');
-          repairBtn.classList.add('btn-demo-secondary');
+          repairBtn.classList.remove('btn-success');
+          repairBtn.classList.add('btn-secondary');
 
-          Toast.show('✨ All 3 loose folders repaired and indexed for 1-click updates!', 'success', 3500);
-          this.appendConsoleLog(`[ModRefactorer] Generated missing PublishedFileId.txt for 3 items and renamed folders cleanly.`);
+          Toast.show(`✨ All ${looseList.length} loose folders repaired and indexed for 1-click updates!`, 'success', 3500);
         }
-      }, 350);
+      }, 320);
     },
 
     /* --------------------------------------------------------------------------
@@ -1125,62 +1286,169 @@
     initSettingsTab() {
       const slider = document.getElementById('demo-worker-slider');
       const label = document.getElementById('demo-worker-num');
+      const browseBtn = document.getElementById('demo-btn-browse-path');
+      const backupToggle = document.getElementById('demo-backup-toggle');
+      const steamcmdToggle = document.getElementById('demo-steamcmd-toggle');
+      const saveBtn = document.getElementById('demo-btn-save-settings');
+      const resetBtn = document.getElementById('demo-btn-reset-settings');
 
       if (slider && label) {
         slider.addEventListener('input', () => {
-          label.textContent = `${slider.value} Workers`;
-          this.appendConsoleLog(`[Config] Parallel worker count updated to ${slider.value}`);
+          const val = parseInt(slider.value, 10);
+          label.textContent = `${val} Workers`;
+          this.concurrency = val;
+          this.renderWorkerCards();
+          this.appendConsoleLog('Config', `Parallel worker pool resized to ${val}`);
+        });
+      }
+
+      if (browseBtn) {
+        browseBtn.addEventListener('click', () => {
+          const game = this.games[this.activeAppId];
+          Toast.show(`📁 Folder Picker simulated for <strong>${game.name}</strong>: <code>${game.path}</code>`, 'info');
+        });
+      }
+
+      if (backupToggle) {
+        backupToggle.addEventListener('change', () => {
+          const enabled = backupToggle.checked;
+          Toast.show(`Zip backup safety engine ${enabled ? 'enabled' : 'disabled'}.`, enabled ? 'success' : 'warning');
+          this.appendConsoleLog('Config', `Setting "auto_backup" changed to: ${enabled}`);
+        });
+      }
+
+      if (steamcmdToggle) {
+        steamcmdToggle.addEventListener('change', () => {
+          const enabled = steamcmdToggle.checked;
+          Toast.show(`SteamCMD anonymous login ${enabled ? 'enabled' : 'disabled'}.`, 'info');
+          this.appendConsoleLog('Config', `Setting "steamcmd_anonymous" changed to: ${enabled}`);
+        });
+      }
+
+      if (saveBtn) {
+        saveBtn.addEventListener('click', () => {
+          const originalText = saveBtn.innerHTML;
+          saveBtn.innerHTML = '<span class="btn-spinner"></span> Saving...';
+          saveBtn.disabled = true;
+
+          setTimeout(() => {
+            saveBtn.innerHTML = originalText;
+            saveBtn.disabled = false;
+            Toast.show('💾 Configuration saved successfully to <code>config.json</code>!', 'success');
+            this.appendConsoleLog('Config', `Persisted settings to disk: concurrency=${this.concurrency}, active_profile=${this.activeAppId}`);
+          }, 400);
+        });
+      }
+
+      if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+          if (slider && label) {
+            slider.value = 4;
+            label.textContent = '4 Workers';
+            this.concurrency = 4;
+            this.renderWorkerCards();
+          }
+          if (backupToggle) backupToggle.checked = true;
+          if (steamcmdToggle) steamcmdToggle.checked = true;
+
+          Toast.show('↺ Configuration restored to factory defaults.', 'info');
+          this.appendConsoleLog('Config', 'Restored all settings to default values.');
         });
       }
     },
 
     /* --------------------------------------------------------------------------
-       4.7 Console Logs Tab
+       4.7 Console Logs Tab & Stream Filter
        -------------------------------------------------------------------------- */
     initLogsTab() {
       const term = document.getElementById('demo-console-output');
       const simBtn = document.getElementById('demo-btn-sim-log');
+      const clearBtn = document.getElementById('demo-btn-clear-log');
+      const filterSelect = document.getElementById('demo-log-filter');
 
-      // Pre-populate with initial logs
+      // Pre-populate with realistic initial startup logs
       if (term && term.children.length === 0) {
         const initialLogs = [
           { tag: 'WorkerPool', text: 'Initialized isolated staging environments in temp_workers/ (worker_1 .. worker_4)' },
           { tag: 'SteamCMD', text: 'Checking SteamCMD binary at bin/steamcmd.sh... Validated OK' },
-          { tag: 'MetadataCache', text: 'Loaded 6 cached mod entries from data/workshop_cache.json' },
+          { tag: 'MetadataCache', text: 'Loaded 24 cached mod entries from data/workshop_cache.json' },
           { tag: 'FastAPI', text: 'Server running on http://127.0.0.1:8080 (Press CTRL+C or click Stop to quit)' },
           { tag: 'WebSocket', text: 'WebSocket listener connected on /ws/stream' }
         ];
 
-        term.innerHTML = initialLogs.map((l) => this.formatLogLine(l.tag, l.text)).join('');
+        initialLogs.forEach((l) => this.appendConsoleLog(l.tag, l.text));
       }
 
       if (simBtn) {
         simBtn.addEventListener('click', () => {
           const item = this.logPool[this.logIndex % this.logPool.length];
           this.logIndex++;
-          this.appendConsoleLog(`[${item.tag}] ${item.text}`);
+          this.appendConsoleLog(item.tag, item.text);
+        });
+      }
+
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          if (term) term.innerHTML = '';
+          this.allLogs = [];
+          Toast.show('Console log buffer cleared.', 'info');
+        });
+      }
+
+      if (filterSelect) {
+        filterSelect.addEventListener('change', () => {
+          const filter = filterSelect.value;
+          const lines = term.querySelectorAll('.term-line');
+          lines.forEach((line) => {
+            if (filter === 'all') {
+              line.style.display = '';
+            } else {
+              const tagEl = line.querySelector('.term-tag');
+              if (tagEl && tagEl.textContent.includes(filter)) {
+                line.style.display = '';
+              } else {
+                line.style.display = 'none';
+              }
+            }
+          });
         });
       }
     },
 
-    formatLogLine(tag, text) {
-      const now = new Date();
-      const timeStr = now.toTimeString().split(' ')[0];
-      return `<div class="term-line"><span class="term-time">[${timeStr}]</span> <span class="term-tag">[${tag}]</span> ${text}</div>`;
-    },
-
-    appendConsoleLog(rawMessage) {
+    appendConsoleLog(tag, message) {
       const term = document.getElementById('demo-console-output');
       if (!term) return;
 
       const now = new Date();
       const timeStr = now.toTimeString().split(' ')[0];
+
+      // Tag color mapping
+      const tagColors = {
+        WorkerPool: 'log-tag-cyan',
+        SteamCMD: 'log-tag-purple',
+        BackupEngine: 'log-tag-emerald',
+        ModRefactorer: 'log-tag-amber',
+        Config: 'log-tag-purple',
+        ProfileManager: 'log-tag-cyan',
+        SteamAPI: 'log-tag-amber',
+        Deployer: 'log-tag-emerald',
+        QueueManager: 'log-tag-cyan',
+        FastAPI: 'log-tag-emerald',
+        WebSocket: 'log-tag-purple',
+        MetadataCache: 'log-tag-cyan'
+      };
+
+      const tagClass = tagColors[tag] || 'log-tag-cyan';
+
       const div = document.createElement('div');
       div.className = 'term-line';
-      div.innerHTML = `<span class="term-time">[${timeStr}]</span> ${rawMessage}`;
-      term.appendChild(div);
+      div.innerHTML = `
+        <span class="term-time">[${timeStr}]</span>
+        <span class="term-tag ${tagClass}">[${tag}]</span>
+        <span class="term-msg">${message}</span>
+      `;
 
-      // Auto scroll to bottom
+      term.appendChild(div);
       term.scrollTop = term.scrollHeight;
     },
 
@@ -1192,11 +1460,12 @@
       if (openFolderBtn) {
         openFolderBtn.addEventListener('click', () => {
           const game = this.games[this.activeAppId];
-          Toast.show(`📁 Simulating Explorer opening: <code>${game.path}</code>`, 'info');
+          Toast.show(`📁 Opened mod folder: <code>${game.path}</code>`, 'info');
         });
       }
     }
   };
+
 
   /* ==========================================================================
      5. FAQ ACCORDION
@@ -1212,14 +1481,19 @@
 
           const isActive = item.classList.contains('active');
 
-          // Optional: close siblings
+          // Close siblings and set aria-expanded to false
           const allItems = document.querySelectorAll('.faq-item');
           allItems.forEach((other) => {
-            if (other !== item) other.classList.remove('active');
+            if (other !== item) {
+              other.classList.remove('active');
+              const otherBtn = other.querySelector('.faq-question');
+              if (otherBtn) otherBtn.setAttribute('aria-expanded', 'false');
+            }
           });
 
           // Toggle current
           item.classList.toggle('active', !isActive);
+          q.setAttribute('aria-expanded', String(!isActive));
         });
       });
     }
@@ -1235,27 +1509,43 @@
 
       if (!toggle || !drawer) return;
 
+      const setDrawerState = (open) => {
+        drawer.classList.toggle('open', open);
+        toggle.classList.toggle('active', open);
+        toggle.setAttribute('aria-expanded', String(open));
+        if (open) {
+          document.body.style.overflow = 'hidden';
+        } else {
+          document.body.style.overflow = '';
+        }
+      };
+
       toggle.addEventListener('click', (e) => {
         e.stopPropagation();
         const isOpen = drawer.classList.contains('open');
-        drawer.classList.toggle('open', !isOpen);
-        toggle.classList.toggle('active', !isOpen);
+        setDrawerState(!isOpen);
       });
 
       // Close when clicking any link inside drawer
-      const links = drawer.querySelectorAll('.mobile-link');
+      const links = drawer.querySelectorAll('.mobile-link, .nav-link, a');
       links.forEach((link) => {
         link.addEventListener('click', () => {
-          drawer.classList.remove('open');
-          toggle.classList.remove('active');
+          setDrawerState(false);
         });
       });
 
       // Close on click outside
       document.addEventListener('click', (e) => {
-        if (!drawer.contains(e.target) && !toggle.contains(e.target)) {
-          drawer.classList.remove('open');
-          toggle.classList.remove('active');
+        if (drawer.classList.contains('open') && !drawer.contains(e.target) && !toggle.contains(e.target)) {
+          setDrawerState(false);
+        }
+      });
+
+      // Close on Escape key
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && drawer.classList.contains('open')) {
+          setDrawerState(false);
+          toggle.focus();
         }
       });
     }
