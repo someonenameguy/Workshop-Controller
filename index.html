@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Steam Workshop Downloader Controller | Mod Manager & Folder Healer</title>
+  <meta name="description" content="A modern, cross-platform Steam Workshop Downloader, Mod Manager, and Folder Healer. Parallel SteamCMD downloads, interactive localhost Web UI, automated update scanning, and zero-dependency packaging.">
+  <meta name="keywords" content="Steam Workshop, SteamCMD, Mod Manager, Downloader, RimWorld, Stellaris, Cities Skylines, Project Zomboid, Folder Healer">
+  
+  <!-- Open Graph / Meta -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Steam Workshop Downloader Controller">
+  <meta property="og:description" content="Parallel SteamCMD downloads, collision-free worker staging, mod healer, and dark-themed Web UI.">
+  <meta property="og:url" content="https://someonenameguy.github.io/Workshop-Controller/">
+  
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚙️</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Top Fixed Navigation -->
+  <header class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="#" class="nav-brand">
+        <div class="brand-logo">⚙️</div>
+        <div class="brand-info">
+          <span class="brand-name">Workshop Controller</span>
+          <span class="badge badge-cyan">v1.2.0</span>
+        </div>
+      </a>
+
+      <!-- Desktop Nav Links -->
+      <nav class="nav-links">
+        <a href="#features" class="nav-link">Features</a>
+        <a href="#demo" class="nav-link">Live Demo</a>
+        <a href="#architecture" class="nav-link">Architecture</a>
+        <a href="#quickstart" class="nav-link">Quick Start</a>
+        <a href="#games" class="nav-link">Supported Games</a>
+        <a href="#faq" class="nav-link">FAQ</a>
+      </nav>
+
+      <!-- Action Buttons -->
+      <div class="nav-actions">
+        <a href="https://github.com/someonenameguy/Workshop-Controller" target="_blank" rel="noopener noreferrer" class="btn btn-github">
+          <svg class="icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+          <span>GitHub</span>
+        </a>
+        <a href="#quickstart" class="btn btn-primary btn-sm glow-on-hover">Download</a>
+        <button class="mobile-toggle" id="mobile-menu-toggle" aria-label="Toggle Navigation">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile Drawer -->
+    <div class="mobile-drawer" id="mobile-nav">
+      <a href="#features" class="mobile-link">Features</a>
+      <a href="#demo" class="mobile-link">Live Demo</a>
+      <a href="#architecture" class="mobile-link">Architecture</a>
+      <a href="#quickstart" class="mobile-link">Quick Start</a>
+      <a href="#games" class="mobile-link">Supported Games</a>
+      <a href="#faq" class="mobile-link">FAQ</a>
+      <a href="https://github.com/someonenameguy/Workshop-Controller" target="_blank" rel="noopener noreferrer" class="mobile-link">View Repository ↗</a>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="ambient-glow glow-cyan"></div>
+    <div class="ambient-glow glow-indigo"></div>
+    <div class="container hero-content">
+      <div class="hero-badge-container">
+        <span class="hero-pill">
+          <span class="pulse-dot"></span> Cross-Platform • Zero-Dependency Shipping • Python 3.10+
+        </span>
+      </div>
+      
+      <h1 class="hero-title">
+        Parallel Steam Workshop Downloads. <br>
+        <span class="gradient-text">Zero Collisions. Zero Drama.</span>
+      </h1>
+
+      <p class="hero-subtitle">
+        A high-performance Steam Workshop downloader, mod manager, and folder healer.
+        Built with isolated SteamCMD worker staging, a sleek dark gamer localhost Web UI,
+        automatic update tracking, and one-click packaging for non-technical gamers.
+      </p>
+
+      <div class="hero-cta-group">
+        <a href="#quickstart" class="btn btn-primary btn-lg glow-on-hover">
+          ⚡ Get Started in 30 Seconds
+        </a>
+        <a href="#demo" class="btn btn-secondary btn-lg">
+          🎮 Try Interactive Demo
+        </a>
+      </div>
+
+      <!-- Quick Platform Support Pills -->
+      <div class="platform-tags">
+        <span class="platform-tag">🪟 Windows (.bat / .exe)</span>
+        <span class="platform-tag">🐧 Linux (.sh / binary)</span>
+        <span class="platform-tag">🍎 macOS</span>
+        <span class="platform-tag">📦 Valve SteamCMD Ready</span>
+      </div>
+
+      <!-- Stat Cards -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">⚡</div>
+          <div class="stat-value">1 - 8x</div>
+          <div class="stat-label">Parallel Concurrency</div>
+          <div class="stat-sub">Isolated staging prevents file-lock collisions</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🩺</div>
+          <div class="stat-value">1-Click</div>
+          <div class="stat-label">Mod Folder Healer</div>
+          <div class="stat-sub">Repairs numeric IDs, About.xml & PublishedFileId</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🔄</div>
+          <div class="stat-value">Auto</div>
+          <div class="stat-label">Update Scanner</div>
+          <div class="stat-sub">Instant cloud diff with zip rollback backups</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🎮</div>
+          <div class="stat-value">Multi-Game</div>
+          <div class="stat-label">Profile Presets</div>
+          <div class="stat-sub">RimWorld, Stellaris, Cities: Skylines & custom</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Web Dashboard Simulator -->
+  <section class="demo-section" id="demo">
+    <div class="container">
+      <div class="section-header text-center">
+        <span class="section-eyebrow">TRY IT IN YOUR BROWSER</span>
+        <h2 class="section-title">Interactive Web UI Simulator</h2>
+        <p class="section-desc">Experience the exact localhost dashboard that powers the Workshop Controller without installing a thing.</p>
+      </div>
+
+      <!-- Application Window Mockup -->
+      <div class="mockup-window">
+        <!-- Title Bar -->
+        <div class="window-titlebar">
+          <div class="window-dots">
+            <span class="dot dot-close"></span>
+            <span class="dot dot-min"></span>
+            <span class="dot dot-max"></span>
+          </div>
+          <div class="window-title">
+            <span class="title-lock">🔒</span> http://127.0.0.1:8080 — Steam Workshop Downloader Controller
+          </div>
+          <div class="window-badge">SIMULATOR ACTIVE</div>
+        </div>
+
+        <!-- Dashboard App Internal Header -->
+        <div class="demo-navbar">
+          <div class="demo-brand">
+            <span class="demo-logo">⚙️</span>
+            <div>
+              <strong class="demo-brand-name">Workshop Controller</strong>
+              <div class="demo-badge-sub" id="demo-header-game">RimWorld (AppID: 294100)</div>
+            </div>
+          </div>
+
+          <!-- Demo Tabs -->
+          <div class="demo-tabs">
+            <button class="demo-tab active" data-tab="mods">
+              📦 Installed Mods <span class="tab-count" id="demo-mods-badge">6</span>
+            </button>
+            <button class="demo-tab" data-tab="queue">
+              ⚡ Download Queue <span class="tab-count badge-pulse" id="demo-queue-badge">2</span>
+            </button>
+            <button class="demo-tab" data-tab="refactor">
+              🩺 Folder Refactor
+            </button>
+            <button class="demo-tab" data-tab="settings">
+              ⚙️ Settings
+            </button>
+            <button class="demo-tab" data-tab="logs">
+              📜 Console Logs
+            </button>
+          </div>
+
+          <!-- Demo Header Actions -->
+          <div class="demo-actions">
+            <div class="demo-profile-select-wrap">
+              <span class="select-icon">🎮</span>
+              <select id="demo-profile-select" class="demo-select">
+                <option value="294100" selected>RimWorld</option>
+                <option value="281990">Stellaris</option>
+                <option value="255710">Cities: Skylines</option>
+                <option value="108600">Project Zomboid</option>
+              </select>
+            </div>
+            <div class="demo-status-pill" id="demo-status-indicator">
+              <span class="status-green-dot"></span>
+              <span>SteamCMD Ready</span>
+            </div>
+            <button class="btn-demo btn-demo-secondary" id="demo-btn-open-folder" title="Simulate opening folder">
+              📁 Open Folder
+            </button>
+          </div>
+        </div>
+
+        <!-- Demo Content Body -->
+        <div class="demo-body">
+
+          <!-- TAB 1: INSTALLED MODS -->
+          <div class="demo-pane active" id="demo-pane-mods">
+            <div class="demo-toolbar">
+              <div class="demo-search-box">
+                <span class="search-ico">🔍</span>
+                <input type="text" id="demo-search-input" placeholder="Search installed mods by title, author, ID...">
+              </div>
+              <div class="demo-filters">
+                <select id="demo-status-select" class="demo-select-sm">
+                  <option value="all">All Mods</option>
+                  <option value="updates">Updates Available Only</option>
+                  <option value="steam">Steam Workshop Only</option>
+                </select>
+                <select id="demo-tag-select" class="demo-select-sm">
+                  <option value="">🏷️ All Tags</option>
+                  <option value="Framework">Framework</option>
+                  <option value="Gameplay">Gameplay</option>
+                  <option value="1.5">Version 1.5</option>
+                  <option value="1.6">Version 1.6</option>
+                </select>
+              </div>
+              <div class="demo-toolbar-buttons">
+                <button class="btn-demo btn-demo-primary" id="demo-btn-check-updates">
+                  🔄 Check Updates
+                </button>
+                <button class="btn-demo btn-demo-success" id="demo-btn-update-all" style="display: none;">
+                  ⬆️ Update All Outdated (<span id="demo-outdated-count">2</span>)
+                </button>
+              </div>
+            </div>
+
+            <!-- Simulated Banner -->
+            <div class="demo-alert-banner" id="demo-updates-banner" style="display: none;">
+              <div class="alert-emoji">🔔</div>
+              <div class="alert-info">
+                <strong>2 Updates Available on Steam Workshop!</strong>
+                <p>New versions detected. Automatic zip backups will be created before updating.</p>
+              </div>
+              <button class="btn-demo btn-demo-amber btn-sm" id="demo-btn-quick-update">Update Now</button>
+            </div>
+
+            <!-- Mod Cards Grid -->
+            <div class="demo-mods-grid" id="demo-mods-grid">
+              <!-- Dynamically populated by app.js -->
+            </div>
+          </div>
+
+          <!-- TAB 2: DOWNLOAD QUEUE -->
+          <div class="demo-pane" id="demo-pane-queue">
+            <div class="queue-input-bar">
+              <input type="text" id="demo-queue-input" placeholder="Paste Steam Workshop URL (e.g. https://steamcommunity.com/sharedfiles/filedetails/?id=2009463077) or numeric ID...">
+              <button class="btn-demo btn-demo-primary" id="demo-btn-add-queue">⚡ Add to Queue</button>
+            </div>
+
+            <div class="queue-stats-bar">
+              <div class="worker-status-badge">
+                <span class="status-indicator-dot active"></span>
+                <span>Active Workers: <strong>3 of 4</strong></span>
+              </div>
+              <div class="speed-badge">
+                <span>Speed: <strong id="demo-speed-val">24.6 MB/s</strong></span>
+              </div>
+              <div class="staging-note">
+                🔒 Safe mode: Isolated worker staging directories active
+              </div>
+            </div>
+
+            <div class="queue-list" id="demo-queue-list">
+              <!-- Dynamically populated & animated by app.js -->
+            </div>
+          </div>
+
+          <!-- TAB 3: FOLDER REFACTOR / HEALER -->
+          <div class="demo-pane" id="demo-pane-refactor">
+            <div class="refactor-hero-box">
+              <div class="refactor-icon">🩺</div>
+              <div>
+                <h3>Mod Folder Healer & Metadata Repair Engine</h3>
+                <p>Resolves messy mod folders named with numeric IDs, unzipped third-party archives, or missing Steam metadata files. Automatically parses local <code>About.xml</code>, extracts official Workshop IDs, and generates <code>PublishedFileId.txt</code> &amp; <code>.lastupdated</code>.</p>
+              </div>
+              <button class="btn-demo btn-demo-primary" id="demo-btn-scan-loose">
+                🔍 Scan Loose Folders
+              </button>
+            </div>
+
+            <!-- Animated Healer Progress -->
+            <div class="healer-progress-wrap" id="demo-healer-progress-wrap" style="display: none;">
+              <div class="healer-progress-bar">
+                <div class="healer-progress-fill" id="demo-healer-progress-fill"></div>
+              </div>
+              <div class="healer-status-text" id="demo-healer-status-text">Scanning directories...</div>
+            </div>
+
+            <!-- Comparison Table -->
+            <div class="healer-table-container" id="demo-healer-table-wrap">
+              <table class="healer-table">
+                <thead>
+                  <tr>
+                    <th>Original Folder Name</th>
+                    <th>Identified Mod Title</th>
+                    <th>Resolved Workshop ID</th>
+                    <th>Repair Action</th>
+                  </tr>
+                </thead>
+                <tbody id="demo-healer-tbody">
+                  <!-- Injected by app.js -->
+                </tbody>
+              </table>
+              <div class="healer-action-bar">
+                <button class="btn-demo btn-demo-success" id="demo-btn-repair-meta">
+                  ✨ Repair &amp; Rename All Identified Mods
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 4: SETTINGS -->
+          <div class="demo-pane" id="demo-pane-settings">
+            <div class="settings-grid">
+              <div class="settings-card">
+                <h4>🎮 Game Profiles</h4>
+                <p>Configure multiple games with custom Steam App IDs and target mod directories.</p>
+                <div class="form-group">
+                  <label>Game Preset</label>
+                  <select class="demo-select full-width">
+                    <option>RimWorld (294100)</option>
+                    <option>Stellaris (281990)</option>
+                    <option>Cities: Skylines (255710)</option>
+                    <option>Project Zomboid (108600)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Target Mods Directory</label>
+                  <input type="text" class="demo-input full-width" value="C:\Games\RimWorld\Mods" readonly>
+                </div>
+              </div>
+
+              <div class="settings-card">
+                <h4>⚡ Concurrency &amp; Staging</h4>
+                <p>Fine-tune parallel downloads without causing SteamCMD lockfile collisions.</p>
+                <div class="form-group">
+                  <label>Parallel Worker Count: <strong id="demo-worker-num">3 Workers</strong></label>
+                  <input type="range" class="demo-slider" min="1" max="8" value="3" id="demo-worker-slider">
+                </div>
+                <div class="toggle-group">
+                  <input type="checkbox" id="demo-backup-toggle" checked>
+                  <label for="demo-backup-toggle">Auto-generate .zip backup before updating existing mods</label>
+                </div>
+                <div class="toggle-group">
+                  <input type="checkbox" id="demo-steamcmd-toggle" checked>
+                  <label for="demo-steamcmd-toggle">Auto-bootstrap SteamCMD from Valve CDN on first run</label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 5: CONSOLE LOGS -->
+          <div class="demo-pane" id="demo-pane-logs">
+            <div class="console-header">
+              <div class="console-title">
+                <span class="terminal-dot"></span> Live Subprocess Stream (WebSockets)
+              </div>
+              <button class="btn-demo btn-demo-secondary btn-xs" id="demo-btn-sim-log">
+                ➕ Append Sample Log
+              </button>
+            </div>
+            <div class="terminal-window" id="demo-console-output">
+              <!-- Appended by app.js -->
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Key Features Grid -->
+  <section class="features-section" id="features">
+    <div class="container">
+      <div class="section-header text-center">
+        <span class="section-eyebrow">ENGINEERED FOR POWER &amp; SIMPLICITY</span>
+        <h2 class="section-title">Everything Modding Needs, Nothing It Doesn't</h2>
+        <p class="section-desc">Designed to replace fragile browser scripts, broken third-party downloaders, and manual folder juggling.</p>
+      </div>
+
+      <div class="features-grid">
+        <!-- Feature 1 -->
+        <div class="feature-card">
+          <div class="feature-header">
+            <div class="feature-icon bg-cyan">⚡</div>
+            <span class="feature-tag">Concurrency</span>
+          </div>
+          <h3>Collision-Free Parallel Downloads</h3>
+          <p>Download up to 8 workshop items simultaneously. Each worker operates in an isolated staging environment, completely bypassing Valve's notorious <code>appworkshop_&lt;appid&gt;.acf</code> file-lock crashes.</p>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="feature-card">
+          <div class="feature-header">
+            <div class="feature-icon bg-emerald">🩺</div>
+            <span class="feature-tag">Folder Healer</span>
+          </div>
+          <h3>Intelligent Folder Healer &amp; Repair</h3>
+          <p>Tired of unzipped folders named <code>2009463077</code>? The healer parses local <code>About.xml</code>, detects Workshop IDs, queries Steam API, generates missing <code>PublishedFileId.txt</code>, and safely renames folders.</p>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="feature-card">
+          <div class="feature-header">
+            <div class="feature-icon bg-indigo">🔄</div>
+            <span class="feature-tag">Automation</span>
+          </div>
+          <h3>Smart Update Scanner &amp; Zip Backups</h3>
+          <p>Scans all installed mods, compares timestamps against live Steam Workshop metadata, and provides 1-click batch updating with automatic rollback backups stored in <code>backups/</code>.</p>
+        </div>
+
+        <!-- Feature 4 -->
+        <div class="feature-card">
+          <div class="feature-header">
+            <div class="feature-icon bg-violet">🎮</div>
+            <span class="feature-tag">Multi-Profile</span>
+          </div>
+          <h3>Multi-Game &amp; Multi-Folder Profiles</h3>
+          <p>Switch instantly between RimWorld, Stellaris, Cities: Skylines, Project Zomboid, Garry's Mod, Don't Starve Together, or any custom Steam App ID from the top navigation dropdown.</p>
+        </div>
+
+        <!-- Feature 5 -->
+        <div class="feature-card">
+          <div class="feature-header">
+            <div class="feature-icon bg-amber">🖼️</div>
+            <span class="feature-tag">Offline Caching</span>
+          </div>
+          <h3>Persistent Thumbnails &amp; Tag Filters</h3>
+          <p>Never suffer broken images again. Local cache persists titles, high-res previews, and dynamic game-version tags (e.g. <code>1.5</code>, <code>1.6</code>, <code>Framework</code>) directly in <code>data/workshop_cache.json</code>.</p>
+        </div>
+
+        <!-- Feature 6 -->
+        <div class="feature-card">
+          <div class="feature-header">
+            <div class="feature-icon bg-rose">📦</div>
+            <span class="feature-tag">Zero-Dependency</span>
+          </div>
+          <h3>Single Executable Shipping</h3>
+          <p>Built with PyInstaller packaging scripts for Windows and Linux. Gamers do not need Python, Node.js, or external tools installed—just double click and play.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Architecture & How It Works -->
+  <section class="architecture-section" id="architecture">
+    <div class="container">
+      <div class="section-header text-center">
+        <span class="section-eyebrow">UNDER THE HOOD</span>
+        <h2 class="section-title">How Isolated Worker Staging Works</h2>
+        <p class="section-desc">Why standard SteamCMD fails with parallel downloads—and how Workshop Controller solves it permanently.</p>
+      </div>
+
+      <div class="arch-comparison-grid">
+        <!-- Bad way -->
+        <div class="arch-card arch-card-danger">
+          <div class="arch-badge badge-danger">Standard SteamCMD (Naive Approach)</div>
+          <h4>❌ Race Conditions &amp; Lock Violations</h4>
+          <p>When multiple SteamCMD instances download concurrently to the same game root, they all attempt to read and write to <code>steamapps/appworkshop_294100.acf</code> simultaneously.</p>
+          <ul class="arch-list">
+            <li>⛔ Corrupted download caches and zero-byte files</li>
+            <li>⛔ Windows error: "File is locked by another process"</li>
+            <li>⛔ Stalled or failed background downloads</li>
+          </ul>
+        </div>
+
+        <!-- Good way -->
+        <div class="arch-card arch-card-success">
+          <div class="arch-badge badge-success">Workshop Controller Isolated Pool</div>
+          <h4>✅ 100% Collision-Free Worker Isolation</h4>
+          <p>Each worker process runs in its own private temporary staging root (<code>temp_workers/worker_N/</code>) with an independent ACF manifest before cleanly moving the finished mod.</p>
+          <ul class="arch-list">
+            <li>✨ 0 file lock collisions regardless of worker concurrency (1–8)</li>
+            <li>✨ Atomic moves to destination mod directory once verified</li>
+            <li>✨ Automatic zip backup creation before overwriting older mod versions</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Architecture Flow Visual -->
+      <div class="arch-flow-box">
+        <div class="flow-step">
+          <div class="flow-icon">💻</div>
+          <div class="flow-title">Browser Web UI</div>
+          <div class="flow-desc">Vanilla JS + CSS localhost interface</div>
+        </div>
+        <div class="flow-arrow">➔</div>
+        <div class="flow-step">
+          <div class="flow-icon">🚀</div>
+          <div class="flow-title">FastAPI Backend</div>
+          <div class="flow-desc">REST API + bidirectional WebSockets</div>
+        </div>
+        <div class="flow-arrow">➔</div>
+        <div class="flow-step">
+          <div class="flow-icon">⚙️</div>
+          <div class="flow-title">Worker Pool</div>
+          <div class="flow-desc">Isolated staging directories (Worker 1..N)</div>
+        </div>
+        <div class="flow-arrow">➔</div>
+        <div class="flow-step">
+          <div class="flow-icon">📂</div>
+          <div class="flow-title">Destination Directory</div>
+          <div class="flow-desc">Verified mod + PublishedFileId.txt</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quick Start & Platform Downloads -->
+  <section class="quickstart-section" id="quickstart">
+    <div class="container">
+      <div class="section-header text-center">
+        <span class="section-eyebrow">GET STARTED NOW</span>
+        <h2 class="section-title">Launch in Seconds on Any OS</h2>
+        <p class="section-desc">Choose your platform below to get the Steam Workshop Downloader Controller up and running.</p>
+      </div>
+
+      <div class="quickstart-card">
+        <!-- Platform Switcher Tabs -->
+        <div class="platform-tabs">
+          <button class="platform-tab active" data-platform="windows">
+            <span class="p-icon">🪟</span> Windows (Portable / Script)
+          </button>
+          <button class="platform-tab" data-platform="linux">
+            <span class="p-icon">🐧</span> Linux / macOS
+          </button>
+          <button class="platform-tab" data-platform="source">
+            <span class="p-icon">🐍</span> Python Source
+          </button>
+          <button class="platform-tab" data-platform="build">
+            <span class="p-icon">🔨</span> Build Standalone Executable
+          </button>
+        </div>
+
+        <!-- Platform Content: Windows -->
+        <div class="platform-content active" id="platform-windows">
+          <div class="step-guide">
+            <div class="step-item">
+              <span class="step-number">1</span>
+              <div>
+                <h4>Clone or Download the Repository</h4>
+                <p>Download the latest release zip or clone via Git:</p>
+                <div class="code-box">
+                  <code>git clone https://github.com/someonenameguy/Workshop-Controller.git
+cd Workshop-Controller</code>
+                  <button class="btn-copy" data-clipboard="git clone https://github.com/someonenameguy/Workshop-Controller.git&#10;cd Workshop-Controller">📋 Copy</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="step-item">
+              <span class="step-number">2</span>
+              <div>
+                <h4>Double-Click Portable Launcher</h4>
+                <p>Simply run the included batch launcher. It will automatically check dependencies and start the controller:</p>
+                <div class="code-box">
+                  <code>run.bat</code>
+                  <button class="btn-copy" data-clipboard="run.bat">📋 Copy</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="step-item">
+              <span class="step-number">3</span>
+              <div>
+                <h4>Enjoy the Localhost Dashboard</h4>
+                <p>Your browser will automatically open to <code>http://127.0.0.1:8080</code>. SteamCMD will be auto-downloaded if not found.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Platform Content: Linux -->
+        <div class="platform-content" id="platform-linux">
+          <div class="step-guide">
+            <div class="step-item">
+              <span class="step-number">1</span>
+              <div>
+                <h4>Clone &amp; Enter Directory</h4>
+                <div class="code-box">
+                  <code>git clone https://github.com/someonenameguy/Workshop-Controller.git
+cd Workshop-Controller</code>
+                  <button class="btn-copy" data-clipboard="git clone https://github.com/someonenameguy/Workshop-Controller.git&#10;cd Workshop-Controller">📋 Copy</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="step-item">
+              <span class="step-number">2</span>
+              <div>
+                <h4>Make Executable and Run</h4>
+                <div class="code-box">
+                  <code>chmod +x run.sh
+./run.sh</code>
+                  <button class="btn-copy" data-clipboard="chmod +x run.sh&#10;./run.sh">📋 Copy</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Platform Content: Python Source -->
+        <div class="platform-content" id="platform-source">
+          <div class="step-guide">
+            <div class="step-item">
+              <span class="step-number">1</span>
+              <div>
+                <h4>Set Up Virtual Environment &amp; Install Dependencies</h4>
+                <div class="code-box">
+                  <code>python3 -m venv .venv
+source .venv/bin/activate  # Or .venv\Scripts\activate on Windows
+pip install -r requirements.txt</code>
+                  <button class="btn-copy" data-clipboard="python3 -m venv .venv&#10;source .venv/bin/activate&#10;pip install -r requirements.txt">📋 Copy</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="step-item">
+              <span class="step-number">2</span>
+              <div>
+                <h4>Launch Controller Server</h4>
+                <div class="code-box">
+                  <code>python3 main.py</code>
+                  <button class="btn-copy" data-clipboard="python3 main.py">📋 Copy</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Platform Content: Standalone Build -->
+        <div class="platform-content" id="platform-build">
+          <div class="step-guide">
+            <div class="step-item">
+              <span class="step-number">1</span>
+              <div>
+                <h4>Package Standalone Binary with PyInstaller</h4>
+                <p>Produces a zero-dependency portable folder with an embedded Python runtime:</p>
+                <div class="code-box">
+                  <code># On Windows (Command Prompt / PowerShell):
+packaging\build_windows.bat
+
+# On Windows (Git Bash / MSYS2) or Linux:
+./packaging/build_windows.sh  # Windows bash
+./packaging/build_linux.sh    # Linux</code>
+                  <button class="btn-copy" data-clipboard="packaging\build_windows.bat">📋 Copy</button>
+                </div>
+                <p class="muted-note">Output binary will be located in <code>dist/RimWorldWorkshopController/</code>.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Supported Games Showcase -->
+  <section class="games-section" id="games">
+    <div class="container">
+      <div class="section-header text-center">
+        <span class="section-eyebrow">MULTI-GAME READY</span>
+        <h2 class="section-title">Popular Games Ready Out of the Box</h2>
+        <p class="section-desc">Workshop Controller comes with pre-configured Steam App IDs and mod directory conventions.</p>
+      </div>
+
+      <div class="games-grid">
+        <div class="game-card">
+          <div class="game-card-icon">🪐</div>
+          <div class="game-card-body">
+            <h3>RimWorld</h3>
+            <span class="game-appid">App ID: 294100</span>
+            <p>Full support for About.xml parsing, version tags (1.4/1.5/1.6), and folder healer renaming.</p>
+          </div>
+        </div>
+
+        <div class="game-card">
+          <div class="game-card-icon">🌌</div>
+          <div class="game-card-body">
+            <h3>Stellaris</h3>
+            <span class="game-appid">App ID: 281990</span>
+            <p>Paradox mod folder support with automatic descriptor and archive verification.</p>
+          </div>
+        </div>
+
+        <div class="game-card">
+          <div class="game-card-icon">🏙️</div>
+          <div class="game-card-body">
+            <h3>Cities: Skylines</h3>
+            <span class="game-appid">App ID: 255710</span>
+            <p>Asset and mod package support with high-speed parallel SteamCMD downloads.</p>
+          </div>
+        </div>
+
+        <div class="game-card">
+          <div class="game-card-icon">🧟</div>
+          <div class="game-card-body">
+            <h3>Project Zomboid</h3>
+            <span class="game-appid">App ID: 108600</span>
+            <p>Mod.info metadata reading, workshop ID mapping, and direct mods directory placement.</p>
+          </div>
+        </div>
+
+        <div class="game-card">
+          <div class="game-card-icon">🔫</div>
+          <div class="game-card-body">
+            <h3>Garry's Mod</h3>
+            <span class="game-appid">App ID: 4000</span>
+            <p>Direct download of GMA workshop archives into addons directories.</p>
+          </div>
+        </div>
+
+        <div class="game-card">
+          <div class="game-card-icon">⛺</div>
+          <div class="game-card-body">
+            <h3>Don't Starve Together</h3>
+            <span class="game-appid">App ID: 322330</span>
+            <p>Direct mod folder placement and automatic modinfo.lua discovery.</p>
+          </div>
+        </div>
+
+        <div class="game-card">
+          <div class="game-card-icon">⚔️</div>
+          <div class="game-card-body">
+            <h3>Hearts of Iron IV</h3>
+            <span class="game-appid">App ID: 394360</span>
+            <p>Total conversions and submod downloads with zip archive backups.</p>
+          </div>
+        </div>
+
+        <div class="game-card game-card-custom">
+          <div class="game-card-icon">➕</div>
+          <div class="game-card-body">
+            <h3>Any Steam Workshop Game</h3>
+            <span class="game-appid">Custom App ID</span>
+            <p>Simply enter any Steam App ID and target folder path in the Settings tab to manage any game!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ Accordion -->
+  <section class="faq-section" id="faq">
+    <div class="container">
+      <div class="section-header text-center">
+        <span class="section-eyebrow">GOT QUESTIONS?</span>
+        <h2 class="section-title">Frequently Asked Questions</h2>
+      </div>
+
+      <div class="faq-accordion">
+        <div class="faq-item">
+          <button class="faq-question">
+            <span>Do I need to own the games on Steam to download mods?</span>
+            <span class="faq-chevron">▾</span>
+          </button>
+          <div class="faq-answer">
+            <p>For the vast majority of Workshop-enabled games (such as RimWorld, Stellaris, Cities: Skylines, etc.), SteamCMD supports anonymous downloading via <code>login anonymous</code>. You do not need a Steam account or ownership. If a specific game requires ownership, you can configure your Steam credentials in the Settings tab.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question">
+            <span>Why does standard SteamCMD fail when downloading in parallel?</span>
+            <span class="faq-chevron">▾</span>
+          </button>
+          <div class="faq-answer">
+            <p>Valve designed SteamCMD with a single global state file: <code>appworkshop_&lt;appid&gt;.acf</code>. If two SteamCMD instances attempt to download simultaneously to the same root, they collide on this file with write lock errors. Workshop Controller solves this completely by giving every concurrent worker its own private, isolated staging directory.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question">
+            <span>How does the Mod Folder Healer repair loose folders?</span>
+            <span class="faq-chevron">▾</span>
+          </button>
+          <div class="faq-answer">
+            <p>The Healer inspects loose folders (such as numeric folders from manual downloads or unzipped archives) for metadata files like <code>About.xml</code> or <code>modinfo.lua</code>. It parses the mod title and author, locates the official Steam Workshop ID, queries the Steam API for metadata, generates missing <code>PublishedFileId.txt</code> and <code>.lastupdated</code> files, and renames the folder cleanly.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question">
+            <span>Where are automatic backups saved before updating?</span>
+            <span class="faq-chevron">▾</span>
+          </button>
+          <div class="faq-answer">
+            <p>Whenever you trigger an update for an existing mod, the controller creates a compressed <code>.zip</code> archive in the <code>backups/</code> directory stamped with the exact date and timestamp before any files are replaced. You can restore prior versions at any time.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question">
+            <span>Can I build a standalone .exe for non-technical friends?</span>
+            <span class="faq-chevron">▾</span>
+          </button>
+          <div class="faq-answer">
+            <p>Yes! Simply run <code>packaging\build_windows.bat</code> on Windows or <code>./packaging/build_linux.sh</code> on Linux. The script executes PyInstaller and bundles the FastAPI server, frontend assets, and embedded Python into a single portable folder.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container footer-content">
+      <div class="footer-left">
+        <div class="footer-logo">⚙️ Workshop Controller</div>
+        <p class="footer-tagline">Open-source Steam Workshop Downloader, Mod Manager, and Folder Healer.</p>
+        <div class="footer-badges">
+          <span class="badge badge-outline">MIT License</span>
+          <span class="badge badge-outline">Python 3.10+</span>
+          <span class="badge badge-outline">FastAPI</span>
+        </div>
+      </div>
+      <div class="footer-links">
+        <div class="footer-col">
+          <strong>Project</strong>
+          <a href="#features">Features</a>
+          <a href="#demo">Live Demo</a>
+          <a href="#architecture">Architecture</a>
+          <a href="#quickstart">Quick Start</a>
+        </div>
+        <div class="footer-col">
+          <strong>Resources</strong>
+          <a href="https://github.com/someonenameguy/Workshop-Controller" target="_blank" rel="noopener">GitHub Repository</a>
+          <a href="https://github.com/someonenameguy/Workshop-Controller/blob/main/docs/DOCUMENTATION.md" target="_blank" rel="noopener">API Documentation</a>
+          <a href="https://github.com/someonenameguy/Workshop-Controller/issues" target="_blank" rel="noopener">Report an Issue</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom text-center">
+      <p>&copy; 2026 Steam Workshop Downloader Controller. Released under the MIT License.</p>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="app.js"></script>
+</body>
+</html>
