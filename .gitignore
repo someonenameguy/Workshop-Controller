@@ -216,3 +216,22 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+mods/
+backups/
+.pytest_cache/
+.venv/
+temp_workers/
+mods_stellaris/
+Reference Code/
+
+
+dist/
+build/
+*.exe
+*.dll
+
+
+.env
+.env.local
+*.pem
