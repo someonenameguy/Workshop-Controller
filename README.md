@@ -1,3 +1,6 @@
+# Did an AI/LLM/ChatBot/Clanker/Agent make this?
+<sup>yes</sup>
+
 # Steam Workshop Downloader Controller
 
 <p align="center">
