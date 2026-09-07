@@ -32,6 +32,8 @@ class DownloadItem(BaseModel):
     progress: int = 0
     message: str = "In queue"
     error: Optional[str] = None
+    retry_count: int = 0
+    max_retries: int = 3
     added_at: float = 0.0
 
 
@@ -150,6 +152,8 @@ class WorkerPool:
                     status="queued",
                     message="Waiting in queue",
                     added_at=time.time(),
+                    retry_count=0,
+                    max_retries=config_manager.settings.max_retries,
                 )
                 self.items[m_id] = item
                 await self.queue.put(item)
@@ -158,6 +162,49 @@ class WorkerPool:
         await self.broadcast("queue_updated", self.get_queue_status())
         await self.log(None, f"Enqueued {len(added_ids)} mod(s) for download.")
         return added_ids
+
+    async def retry_download(self, mod_id: str) -> bool:
+        """Retries a specific failed or cancelled download."""
+        async with self._lock:
+            if mod_id not in self.items:
+                return False
+            item = self.items[mod_id]
+            if item.status in ("queued", "downloading", "installing"):
+                return False  # Already in progress
+
+            item.status = "queued"
+            item.worker_id = None
+            item.progress = 0
+            item.message = "Queued for retry"
+            item.error = None
+            item.retry_count = 0
+            item.max_retries = config_manager.settings.max_retries
+            await self.queue.put(item)
+
+        await self.broadcast("queue_updated", self.get_queue_status())
+        await self.log(None, f"Retrying download for {item.title} (ID {item.mod_id}).")
+        return True
+
+    async def retry_all_failed(self) -> List[str]:
+        """Retries all failed downloads in the queue."""
+        retried_ids: List[str] = []
+        async with self._lock:
+            for m_id, item in self.items.items():
+                if item.status == "failed":
+                    item.status = "queued"
+                    item.worker_id = None
+                    item.progress = 0
+                    item.message = "Queued for retry"
+                    item.error = None
+                    item.retry_count = 0
+                    item.max_retries = config_manager.settings.max_retries
+                    await self.queue.put(item)
+                    retried_ids.append(m_id)
+
+        if retried_ids:
+            await self.broadcast("queue_updated", self.get_queue_status())
+            await self.log(None, f"Enqueued {len(retried_ids)} failed download(s) for retry.")
+        return retried_ids
 
     async def cancel_download(self, mod_id: str) -> bool:
         """Cancels a specific queued or active download."""
@@ -220,7 +267,51 @@ class WorkerPool:
             await self.broadcast("queue_updated", self.get_queue_status())
 
             # Perform download with retry
-            success = await self._execute_download(worker_id, worker_dir, item)
+            max_retries = (
+                config_manager.settings.max_retries
+                if config_manager.settings.auto_retry
+                else 0
+            )
+            item.max_retries = max_retries
+
+            while self.is_running:
+                success = await self._execute_download(worker_id, worker_dir, item)
+                if success or item.status == "cancelled":
+                    break
+
+                if not self.is_running or not config_manager.settings.auto_retry:
+                    break
+
+                if item.retry_count >= max_retries:
+                    if item.retry_count > 0:
+                        item.message = f"Failed after {item.retry_count} retries: {item.error or 'SteamCMD error'}"
+                        await self.log(
+                            worker_id,
+                            f"Download failed for {item.title} (ID {item.mod_id}) after {item.retry_count} auto-retry attempts.",
+                            "error",
+                        )
+                        await self.broadcast("queue_updated", self.get_queue_status())
+                    break
+
+                item.retry_count += 1
+                item.status = "downloading"
+                item.progress = 5
+                item.message = f"Download failed, auto-retrying ({item.retry_count}/{max_retries})..."
+                await self.broadcast("queue_updated", self.get_queue_status())
+                await self.log(
+                    worker_id,
+                    f"Auto-retry attempt {item.retry_count}/{max_retries} for {item.title} (ID {item.mod_id}) in 2s...",
+                    "warn",
+                )
+
+                cancelled = False
+                for _ in range(20):
+                    if not self.is_running or item.status == "cancelled":
+                        cancelled = True
+                        break
+                    await asyncio.sleep(0.1)
+                if cancelled:
+                    break
 
             self.workers[worker_id].status = "idle"
             self.workers[worker_id].current_mod_id = None
@@ -290,6 +381,10 @@ class WorkerPool:
                     await self.broadcast("queue_updated", self.get_queue_status())
 
             exit_code = await proc.wait()
+            if exit_code != 0 and not download_failed:
+                download_failed = True
+                if not error_reason:
+                    error_reason = f"SteamCMD process exited with code {exit_code}"
         except asyncio.CancelledError:
             await proc.terminate()
             item.status = "cancelled"
@@ -315,6 +410,10 @@ class WorkerPool:
             / str(item.app_id)
             / str(item.mod_id)
         )
+
+        if item.status == "cancelled":
+            shutil.rmtree(staging_mod_path, ignore_errors=True)
+            return False
 
         if not download_failed and staging_mod_path.is_dir() and any(staging_mod_path.iterdir()):
             # Check staging_mod_path / "About" / "About.xml" for real mod title
@@ -346,12 +445,14 @@ class WorkerPool:
                 shutil.rmtree(staging_mod_path, ignore_errors=True)
                 return True
             except Exception as e:
+                shutil.rmtree(staging_mod_path, ignore_errors=True)
                 item.status = "failed"
                 item.error = f"Installation error: {e}"
                 item.message = "Failed during installation"
                 await self.log(worker_id, f"Failed installing {item.mod_id}: {e}", "error")
                 return False
         else:
+            shutil.rmtree(staging_mod_path, ignore_errors=True)
             item.status = "failed"
             item.error = error_reason or "SteamCMD download failed or item empty."
             item.message = f"Download failed ({error_reason or 'Failure'})"

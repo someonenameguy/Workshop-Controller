@@ -34,11 +34,18 @@ class SettingsUpdateRequest(BaseModel):
     steam_user: Optional[str] = None
     steam_pass: Optional[str] = None
     auto_backup: Optional[bool] = None
+    auto_retry: Optional[bool] = None
+    max_retries: Optional[int] = None
     web_port: Optional[int] = None
     auto_open_browser: Optional[bool] = None
     steamcmd_custom_path: Optional[str] = None
     active_profile_id: Optional[str] = None
     profiles: Optional[List[ModFolderProfile]] = None
+
+
+class RetryRequest(BaseModel):
+    mod_id: Optional[str] = None
+    retry_all: bool = False
 
 
 class SwitchProfileRequest(BaseModel):
@@ -242,6 +249,32 @@ async def cancel_downloads(req: CancelRequest):
         return {"status": "success" if success else "not_found", "mod_id": req.mod_id}
     else:
         raise HTTPException(status_code=400, detail="Specify mod_id or cancel_all=True.")
+
+
+@router.post("/mods/retry")
+async def retry_downloads(req: RetryRequest):
+    if req.retry_all:
+        retried = await worker_pool.retry_all_failed()
+        return {
+            "status": "success",
+            "count": len(retried),
+            "retried_ids": retried,
+            "message": f"Retrying {len(retried)} failed download(s).",
+        }
+    elif req.mod_id:
+        success = await worker_pool.retry_download(req.mod_id)
+        if not success:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Mod ID {req.mod_id} not found or cannot be retried (currently active).",
+            )
+        return {
+            "status": "success",
+            "mod_id": req.mod_id,
+            "message": f"Mod {req.mod_id} queued for retry.",
+        }
+    else:
+        raise HTTPException(status_code=400, detail="Specify mod_id or retry_all=True.")
 
 
 @router.post("/mods/delete")

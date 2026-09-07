@@ -12,6 +12,8 @@ def test_default_settings():
     assert settings.max_parallel_workers == 3
     assert settings.steam_user == "anonymous"
     assert settings.auto_backup is True
+    assert settings.auto_retry is True
+    assert settings.max_retries == 3
     assert settings.auto_open_browser is True
 
     # Profile migration verification
@@ -39,17 +41,27 @@ def test_config_manager_persistence(tmp_path):
     mgr = ConfigManager(settings_path=settings_file)
 
     assert mgr.settings.app_id == 294100
-    mgr.update({"app_id": 281990, "game_name": "Stellaris", "max_parallel_workers": 4})
+    mgr.update({
+        "app_id": 281990,
+        "game_name": "Stellaris",
+        "max_parallel_workers": 4,
+        "auto_retry": False,
+        "max_retries": 5,
+    })
 
     assert mgr.settings.app_id == 281990
     assert mgr.settings.game_name == "Stellaris"
     assert mgr.settings.max_parallel_workers == 4
+    assert mgr.settings.auto_retry is False
+    assert mgr.settings.max_retries == 5
 
     # Reload from file
     mgr2 = ConfigManager(settings_path=settings_file)
     assert mgr2.settings.app_id == 281990
     assert mgr2.settings.game_name == "Stellaris"
     assert mgr2.settings.max_parallel_workers == 4
+    assert mgr2.settings.auto_retry is False
+    assert mgr2.settings.max_retries == 5
 
 
 def test_mod_folder_profiles(tmp_path):

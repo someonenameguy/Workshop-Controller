@@ -1,11 +1,13 @@
 {
-  "download_path": "",
+  "download_path": "/home/kevan/Desktop/Games/rimworldlinux_1.6.4871_598_csf/Mods/",
   "max_parallel_workers": 2,
   "app_id": 294100,
   "game_name": "RimWorld",
   "steam_user": "anonymous",
   "steam_pass": "",
   "auto_backup": true,
+  "auto_retry": true,
+  "max_retries": 3,
   "web_port": 8080,
   "auto_open_browser": true,
   "steamcmd_custom_path": "",
@@ -15,7 +17,7 @@
       "id": "default",
       "name": "RimWorld",
       "app_id": 294100,
-      "folder_path": "",
+      "folder_path": "/home/kevan/Desktop/Games/rimworldlinux_1.6.4871_598_csf/Mods/",
       "steam_user": "anonymous"
     }
   ]

@@ -62,46 +62,74 @@
 
       <!-- ================= TAB 1: INSTALLED MODS ================= -->
       <section id="tab-mods" class="tab-content active">
-        <div class="section-toolbar">
-          <div class="search-box">
-            <span class="search-icon">🔍</span>
-            <input type="text" id="mods-search-input" placeholder="Search mods by name, ID, author, or tag...">
-          </div>
-          <div class="filter-group">
-            <select id="mods-filter-select" class="select-control">
-              <option value="all">All Installed Mods</option>
-              <option value="updates">Updates Available Only</option>
-              <option value="steam">Steam Workshop Only</option>
-              <option value="non-steam">Non-Steam / Local Only</option>
-            </select>
-            <select id="mods-tag-select" class="filter-select">
-              <option value="">🏷️ All Tags</option>
-            </select>
-          </div>
-          <div class="toolbar-actions">
-            <button class="btn btn-primary" id="btn-check-updates">
-              🔄 Check for Updates
-            </button>
-            <button class="btn btn-success" id="btn-update-all" style="display: none;">
-              ⬆️ Update All Outdated (<span id="outdated-count-text">0</span>)
-            </button>
-          </div>
-        </div>
+        <div class="mods-layout">
+          <!-- Steam Workshop Filters Sidebar -->
+          <aside class="steam-filter-sidebar" id="steam-filter-sidebar">
+            <div class="steam-filter-search-wrap">
+              <input type="text" id="mods-search-input" class="steam-search-input" placeholder="Search RimWorld" autocomplete="off" spellcheck="false">
+              <button class="steam-search-cog-btn" id="btn-reset-filters-cog" title="Reset search & filters">⚙</button>
+            </div>
 
-        <div id="updates-banner" class="alert-banner alert-warning" style="display: none;">
-          <div class="alert-icon">🔔</div>
-          <div class="alert-body">
-            <strong id="updates-banner-title">Updates Available!</strong>
-            <p id="updates-banner-desc">There are mods with newer versions on the Steam Workshop.</p>
-          </div>
-          <button class="btn btn-warning btn-sm" id="btn-banner-update">Update Now</button>
-        </div>
+            <div class="steam-filter-section">
+              <div class="steam-filter-heading">SPECIAL FILTERS:</div>
+              <select id="mods-filter-select" class="steam-select-control">
+                <option value="all">None</option>
+                <option value="updates">Updates Available Only</option>
+                <option value="steam">Steam Workshop Only</option>
+                <option value="non-steam">Non-Steam / Local Only</option>
+              </select>
+            </div>
 
-        <!-- Mods Grid -->
-        <div id="mods-grid" class="mods-grid">
-          <div class="loading-state">
-            <div class="spinner"></div>
-            <p>Scanning installed mods...</p>
+            <div id="steam-tags-container" class="steam-tags-container">
+              <!-- Dynamically populated categories & DLC sections -->
+            </div>
+
+            <div class="steam-filter-actions">
+              <button class="steam-date-btn" id="btn-reset-filters">Reset Filters</button>
+            </div>
+
+            <div class="steam-incompatible-note">
+              <p>Some items are not possible to include in the game. You can still find them if you select this box.</p>
+              <label class="steam-checkbox-label">
+                <input type="checkbox" id="chk-show-incompatible">
+                <span>Show incompatible items</span>
+              </label>
+            </div>
+          </aside>
+
+          <!-- Main Content Area -->
+          <div class="mods-main-area">
+            <div class="mods-main-header">
+              <div class="mods-summary-row">
+                <span class="mods-showing-count" id="mods-showing-count">Showing 0 mods</span>
+                <div class="active-filter-chips" id="active-filter-chips"></div>
+              </div>
+              <div class="toolbar-actions">
+                <button class="btn btn-primary" id="btn-check-updates">
+                  🔄 Check for Updates
+                </button>
+                <button class="btn btn-success" id="btn-update-all" style="display: none;">
+                  ⬆️ Update All Outdated (<span id="outdated-count-text">0</span>)
+                </button>
+              </div>
+            </div>
+
+            <div id="updates-banner" class="alert-banner alert-warning" style="display: none;">
+              <div class="alert-icon">🔔</div>
+              <div class="alert-body">
+                <strong id="updates-banner-title">Updates Available!</strong>
+                <p id="updates-banner-desc">There are mods with newer versions on the Steam Workshop.</p>
+              </div>
+              <button class="btn btn-warning btn-sm" id="btn-banner-update">Update Now</button>
+            </div>
+
+            <!-- Mods Grid -->
+            <div id="mods-grid" class="mods-grid">
+              <div class="loading-state">
+                <div class="spinner"></div>
+                <p>Scanning installed mods...</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -128,9 +156,14 @@ or Collections: https://steamcommunity.com/sharedfiles/filedetails/?id=..."></te
             <div class="queue-summary-text" id="queue-summary-text">
               0 items in queue
             </div>
-            <button class="btn btn-danger btn-sm" id="btn-cancel-all" style="margin-left: auto;">
-              🛑 Cancel All
-            </button>
+            <div style="margin-left: auto; display: flex; gap: 8px;">
+              <button class="btn btn-warning btn-sm" id="btn-retry-failed" style="display: none;">
+                🔄 Retry Failed
+              </button>
+              <button class="btn btn-danger btn-sm" id="btn-cancel-all">
+                🛑 Cancel All
+              </button>
+            </div>
           </div>
         </div>
 
@@ -351,6 +384,17 @@ or Collections: https://steamcommunity.com/sharedfiles/filedetails/?id=..."></te
             <div class="form-check">
               <input type="checkbox" id="setting-auto-backup" checked>
               <label for="setting-auto-backup">Create automatic zip backup in <code>backups/</code> before updating an existing mod</label>
+            </div>
+            <div class="form-check" style="margin-top: 10px;">
+              <input type="checkbox" id="setting-auto-retry" checked>
+              <label for="setting-auto-retry">Automatically retry failed SteamCMD downloads</label>
+            </div>
+            <div class="form-group" style="margin-top: 10px;" id="group-max-retries">
+              <label for="setting-max-retries">
+                Max Auto-Retry Attempts: <strong id="max-retries-label">3</strong>
+              </label>
+              <input type="range" id="setting-max-retries" min="1" max="10" value="3" class="slider-control">
+              <small class="form-hint">Number of times a worker will automatically re-attempt a failed download before marking as failed.</small>
             </div>
             <div class="form-check" style="margin-top: 10px;">
               <input type="checkbox" id="setting-auto-browser" checked>

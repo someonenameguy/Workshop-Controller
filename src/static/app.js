@@ -18,6 +18,8 @@ class WorkshopApp {
     this.deleteTargetProfileId = null;
     this.modalAction = null;
     this.isShuttingDown = false;
+    this.includedTags = new Set();
+    this.excludedTags = new Set();
   }
 
   async init() {
@@ -50,12 +52,68 @@ class WorkshopApp {
     }
 
     // Mods tab
-    document.getElementById("mods-search-input").addEventListener("input", () => this.renderMods());
-    document.getElementById("mods-filter-select").addEventListener("change", () => this.renderMods());
-    const modsTagSelect = document.getElementById("mods-tag-select");
-    if (modsTagSelect) {
-      modsTagSelect.addEventListener("change", () => this.renderMods());
+    const modsSearchInput = document.getElementById("mods-search-input");
+    if (modsSearchInput) {
+      modsSearchInput.addEventListener("input", () => this.renderMods());
     }
+
+    const modsFilterSelect = document.getElementById("mods-filter-select");
+    if (modsFilterSelect) {
+      modsFilterSelect.addEventListener("change", () => this.renderMods());
+    }
+
+    const btnResetFilters = document.getElementById("btn-reset-filters");
+    if (btnResetFilters) {
+      btnResetFilters.addEventListener("click", () => this.resetAllFilters());
+    }
+
+    const btnResetCog = document.getElementById("btn-reset-filters-cog");
+    if (btnResetCog) {
+      btnResetCog.addEventListener("click", () => this.resetAllFilters());
+    }
+
+    const chkIncompatible = document.getElementById("chk-show-incompatible");
+    if (chkIncompatible) {
+      chkIncompatible.addEventListener("change", () => this.renderMods());
+    }
+
+    const steamTagsContainer = document.getElementById("steam-tags-container");
+    if (steamTagsContainer) {
+      steamTagsContainer.addEventListener("click", (e) => {
+        const incBtn = e.target.closest(".steam-tag-btn-include");
+        if (incBtn && incBtn.dataset.tag) {
+          e.stopPropagation();
+          this.toggleTagInclude(incBtn.dataset.tag);
+          return;
+        }
+        const excBtn = e.target.closest(".steam-tag-btn-exclude");
+        if (excBtn && excBtn.dataset.tag) {
+          e.stopPropagation();
+          this.toggleTagExclude(excBtn.dataset.tag);
+          return;
+        }
+        const labelEl = e.target.closest(".steam-tag-label");
+        if (labelEl && labelEl.dataset.tag) {
+          this.toggleTagInclude(labelEl.dataset.tag);
+        }
+      });
+    }
+
+    const activeChipsContainer = document.getElementById("active-filter-chips");
+    if (activeChipsContainer) {
+      activeChipsContainer.addEventListener("click", (e) => {
+        const chip = e.target.closest(".active-chip");
+        if (chip) {
+          const tag = chip.dataset.tag;
+          const type = chip.dataset.type;
+          if (type === "inc") this.toggleTagInclude(tag);
+          else if (type === "exc") this.toggleTagExclude(tag);
+        } else if (e.target.closest("#btn-clear-active-chips")) {
+          this.resetAllFilters();
+        }
+      });
+    }
+
     const modsGrid = document.getElementById("mods-grid");
     if (modsGrid) {
       modsGrid.addEventListener("click", (e) => {
@@ -75,6 +133,10 @@ class WorkshopApp {
       document.getElementById("download-text-input").value = "";
     });
     document.getElementById("btn-cancel-all").addEventListener("click", () => this.cancelAllDownloads());
+    const btnRetryFailed = document.getElementById("btn-retry-failed");
+    if (btnRetryFailed) {
+      btnRetryFailed.addEventListener("click", () => this.retryAllFailed());
+    }
 
     // Refactor tab
     document.getElementById("btn-scan-refactor").addEventListener("click", () => this.scanRefactor());
@@ -107,6 +169,22 @@ class WorkshopApp {
     slider.addEventListener("input", (e) => {
       document.getElementById("workers-count-label").textContent = e.target.value;
     });
+
+    const retriesSlider = document.getElementById("setting-max-retries");
+    if (retriesSlider) {
+      retriesSlider.addEventListener("input", (e) => {
+        const label = document.getElementById("max-retries-label");
+        if (label) label.textContent = e.target.value;
+      });
+    }
+
+    const autoRetryCheckbox = document.getElementById("setting-auto-retry");
+    if (autoRetryCheckbox) {
+      autoRetryCheckbox.addEventListener("change", (e) => {
+        const group = document.getElementById("group-max-retries");
+        if (group) group.style.opacity = e.target.checked ? "1" : "0.5";
+      });
+    }
 
     document.querySelectorAll(".preset-btn").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -263,6 +341,16 @@ class WorkshopApp {
       document.getElementById("setting-steam-user").value = this.settings.steam_user || "anonymous";
       document.getElementById("setting-steam-pass").value = this.settings.steam_pass || "";
       document.getElementById("setting-auto-backup").checked = this.settings.auto_backup !== false;
+      const autoRetry = this.settings.auto_retry !== false;
+      const maxRetries = this.settings.max_retries || 3;
+      const autoRetryEl = document.getElementById("setting-auto-retry");
+      if (autoRetryEl) autoRetryEl.checked = autoRetry;
+      const maxRetriesEl = document.getElementById("setting-max-retries");
+      if (maxRetriesEl) maxRetriesEl.value = maxRetries;
+      const maxRetriesLabel = document.getElementById("max-retries-label");
+      if (maxRetriesLabel) maxRetriesLabel.textContent = maxRetries;
+      const groupRetries = document.getElementById("group-max-retries");
+      if (groupRetries) groupRetries.style.opacity = autoRetry ? "1" : "0.5";
       document.getElementById("setting-auto-browser").checked = this.settings.auto_open_browser !== false;
       document.getElementById("setting-custom-steamcmd").value = this.settings.steamcmd_custom_path || "";
     } catch (e) {
@@ -286,6 +374,8 @@ class WorkshopApp {
       steam_user: document.getElementById("setting-steam-user").value.trim() || "anonymous",
       steam_pass: document.getElementById("setting-steam-pass").value,
       auto_backup: document.getElementById("setting-auto-backup").checked,
+      auto_retry: document.getElementById("setting-auto-retry") ? document.getElementById("setting-auto-retry").checked : true,
+      max_retries: document.getElementById("setting-max-retries") ? parseInt(document.getElementById("setting-max-retries").value, 10) : 3,
       auto_open_browser: document.getElementById("setting-auto-browser").checked,
       steamcmd_custom_path: document.getElementById("setting-custom-steamcmd").value.trim(),
     };
@@ -341,13 +431,43 @@ class WorkshopApp {
     }
   }
 
+  renderTagRow(tag, count) {
+    const isInc = this.includedTags.has(tag);
+    const isExc = this.excludedTags.has(tag);
+    const rowClass = isInc ? "is-included" : (isExc ? "is-excluded" : "");
+    const incClass = isInc ? "active" : "";
+    const excClass = isExc ? "active" : "";
+    const countHtml = count > 0 ? `<span class="steam-tag-count">(${count})</span>` : "";
+
+    return `
+      <div class="steam-tag-row ${rowClass}">
+        <button type="button" class="steam-tag-btn steam-tag-btn-include ${incClass}" data-tag="${this.escapeHtml(tag)}" title="Include '${this.escapeHtml(tag)}'">
+          <span>+</span>
+        </button>
+        <button type="button" class="steam-tag-btn steam-tag-btn-exclude ${excClass}" data-tag="${this.escapeHtml(tag)}" title="Exclude '${this.escapeHtml(tag)}'">
+          <span>−</span>
+        </button>
+        <span class="steam-tag-label" data-tag="${this.escapeHtml(tag)}" title="${this.escapeHtml(tag)}">
+          <span class="steam-tag-name">${this.escapeHtml(tag)}</span>
+          ${countHtml}
+        </span>
+      </div>
+    `;
+  }
+
   populateTagFilter() {
-    const tagSelect = document.getElementById("mods-tag-select");
-    if (!tagSelect) return;
+    const container = document.getElementById("steam-tags-container");
+    if (!container) return;
 
-    const currentVal = tagSelect.value;
+    // Update search input placeholder to reflect active profile/game name
+    const searchInput = document.getElementById("mods-search-input");
+    const activeProf = this.profiles.find(p => p.id === this.activeProfileId);
+    if (searchInput) {
+      const gameName = activeProf?.name || "RimWorld";
+      searchInput.placeholder = `Search ${gameName}`;
+    }
+
     const tagCounts = new Map();
-
     for (const mod of this.installedMods) {
       if (Array.isArray(mod.tags)) {
         for (const tag of mod.tags) {
@@ -360,44 +480,195 @@ class WorkshopApp {
       }
     }
 
+    const isRimWorld = !activeProf || activeProf.app_id === 294100 || (activeProf.name && activeProf.name.toLowerCase().includes("rimworld"));
+
+    const STANDARD_TYPES = ["Mod", "Translation", "Scenario"];
+    const RIMWORLD_DLCS = ["Anomaly", "Biotech", "Ideology", "Odyssey", "Royalty", "Name in Game Access"];
+
     const isVersion = (t) => /^\d+(\.\d+)+$/.test(t.trim());
-    const sortedTags = Array.from(tagCounts.keys()).sort((a, b) => {
-      const isVA = isVersion(a);
-      const isVB = isVersion(b);
-      if (isVA && isVB) {
-        const pA = a.split(".").map(Number);
-        const pB = b.split(".").map(Number);
-        for (let i = 0; i < Math.max(pA.length, pB.length); i++) {
-          const vA = pA[i] ?? 0;
-          const vB = pB[i] ?? 0;
-          if (vA !== vB) return vB - vA;
-        }
-        return 0;
+    const isType = (t) => STANDARD_TYPES.some(st => st.toLowerCase() === t.trim().toLowerCase());
+    const isDlc = (t) => {
+      if (isRimWorld) {
+        return RIMWORLD_DLCS.some(d => d.toLowerCase() === t.trim().toLowerCase());
       }
-      if (isVA) return -1;
-      if (isVB) return 1;
-      return a.localeCompare(b, undefined, { sensitivity: "base" });
-    });
+      return /dlc|expansion|pack/i.test(t);
+    };
 
-    let html = `<option value="">🏷️ All Tags</option>`;
-    for (const tag of sortedTags) {
-      const count = tagCounts.get(tag);
-      html += `<option value="${this.escapeHtml(tag)}">${this.escapeHtml(tag)} (${count})</option>`;
+    // Sort versions naturally ascending: 0.14, 0.15, ... 1.0, 1.1, ... 1.6
+    const sortVersionsAsc = (a, b) => {
+      const pA = a.split(".").map(Number);
+      const pB = b.split(".").map(Number);
+      for (let i = 0; i < Math.max(pA.length, pB.length); i++) {
+        const vA = pA[i] ?? 0;
+        const vB = pB[i] ?? 0;
+        if (vA !== vB) return vA - vB;
+      }
+      return 0;
+    };
+
+    // 1. Categories group (Types first, then Versions)
+    const categoryTags = [];
+    for (const st of STANDARD_TYPES) {
+      const foundKey = Array.from(tagCounts.keys()).find(k => k.toLowerCase() === st.toLowerCase());
+      if (foundKey || isRimWorld) {
+        categoryTags.push({ name: foundKey || st, count: tagCounts.get(foundKey) || 0 });
+      }
     }
-    tagSelect.innerHTML = html;
 
-    if (currentVal && tagCounts.has(currentVal)) {
-      tagSelect.value = currentVal;
+    const versionKeys = Array.from(tagCounts.keys()).filter(isVersion).sort(sortVersionsAsc);
+    for (const vk of versionKeys) {
+      categoryTags.push({ name: vk, count: tagCounts.get(vk) || 0 });
+    }
+
+    // 2. Required DLC group
+    const dlcTags = [];
+    if (isRimWorld) {
+      for (const dlc of RIMWORLD_DLCS) {
+        const foundKey = Array.from(tagCounts.keys()).find(k => k.toLowerCase() === dlc.toLowerCase());
+        dlcTags.push({ name: foundKey || dlc, count: tagCounts.get(foundKey) || 0 });
+      }
     } else {
-      tagSelect.value = "";
+      const matchingDlcs = Array.from(tagCounts.keys()).filter(isDlc).sort();
+      for (const d of matchingDlcs) {
+        dlcTags.push({ name: d, count: tagCounts.get(d) || 0 });
+      }
     }
+
+    // 3. Other Tags
+    const handledTagNames = new Set([
+      ...categoryTags.map(c => c.name.toLowerCase()),
+      ...dlcTags.map(d => d.name.toLowerCase()),
+    ]);
+
+    const otherTagKeys = Array.from(tagCounts.keys())
+      .filter(k => !handledTagNames.has(k.toLowerCase()))
+      .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+
+    const otherTags = otherTagKeys.map(k => ({ name: k, count: tagCounts.get(k) || 0 }));
+
+    // Build sidebar sections HTML
+    let html = "";
+
+    if (categoryTags.length > 0) {
+      html += `
+        <div class="steam-filter-group">
+          <div class="steam-filter-heading">CATEGORIES</div>
+          <div class="steam-tags-scroll">
+            ${categoryTags.map(item => this.renderTagRow(item.name, item.count)).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    if (dlcTags.length > 0) {
+      html += `
+        <div class="steam-filter-group">
+          <div class="steam-filter-heading">REQUIRED DLC</div>
+          <div class="steam-tags-scroll">
+            ${dlcTags.map(item => this.renderTagRow(item.name, item.count)).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    if (otherTags.length > 0) {
+      html += `
+        <div class="steam-filter-group">
+          <div class="steam-filter-heading">OTHER TAGS</div>
+          <div class="steam-tags-scroll">
+            ${otherTags.map(item => this.renderTagRow(item.name, item.count)).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    container.innerHTML = html;
+    this.updateTagUI();
+  }
+
+  toggleTagInclude(tag) {
+    if (this.includedTags.has(tag)) {
+      this.includedTags.delete(tag);
+    } else {
+      this.includedTags.add(tag);
+      this.excludedTags.delete(tag);
+    }
+    this.updateTagUI();
+    this.renderMods();
+  }
+
+  toggleTagExclude(tag) {
+    if (this.excludedTags.has(tag)) {
+      this.excludedTags.delete(tag);
+    } else {
+      this.excludedTags.add(tag);
+      this.includedTags.delete(tag);
+    }
+    this.updateTagUI();
+    this.renderMods();
   }
 
   filterByTag(tag) {
-    const tagSelect = document.getElementById("mods-tag-select");
-    if (tagSelect) {
-      tagSelect.value = tag;
-      this.renderMods();
+    if (this.includedTags.has(tag)) {
+      this.includedTags.delete(tag);
+    } else {
+      this.includedTags.add(tag);
+      this.excludedTags.delete(tag);
+    }
+    this.updateTagUI();
+    this.renderMods();
+  }
+
+  resetAllFilters() {
+    const searchInput = document.getElementById("mods-search-input");
+    if (searchInput) searchInput.value = "";
+    const filterSelect = document.getElementById("mods-filter-select");
+    if (filterSelect) filterSelect.value = "all";
+    const chkIncompatible = document.getElementById("chk-show-incompatible");
+    if (chkIncompatible) chkIncompatible.checked = false;
+
+    this.includedTags.clear();
+    this.excludedTags.clear();
+    this.updateTagUI();
+    this.renderMods();
+  }
+
+  updateTagUI() {
+    const container = document.getElementById("steam-tags-container");
+    if (container) {
+      const rows = container.querySelectorAll(".steam-tag-row");
+      rows.forEach(row => {
+        const incBtn = row.querySelector(".steam-tag-btn-include");
+        const excBtn = row.querySelector(".steam-tag-btn-exclude");
+        const tag = incBtn ? incBtn.dataset.tag : null;
+        if (!tag) return;
+
+        const isInc = this.includedTags.has(tag);
+        const isExc = this.excludedTags.has(tag);
+
+        row.classList.toggle("is-included", isInc);
+        row.classList.toggle("is-excluded", isExc);
+        if (incBtn) incBtn.classList.toggle("active", isInc);
+        if (excBtn) excBtn.classList.toggle("active", isExc);
+      });
+    }
+
+    const chipsContainer = document.getElementById("active-filter-chips");
+    if (chipsContainer) {
+      const hasAny = this.includedTags.size > 0 || this.excludedTags.size > 0;
+      if (!hasAny) {
+        chipsContainer.innerHTML = "";
+      } else {
+        let chipsHtml = "";
+        for (const t of this.includedTags) {
+          chipsHtml += `<span class="active-chip active-chip-inc" data-tag="${this.escapeHtml(t)}" data-type="inc" title="Click to remove filter">+ ${this.escapeHtml(t)} ✕</span>`;
+        }
+        for (const t of this.excludedTags) {
+          chipsHtml += `<span class="active-chip active-chip-exc" data-tag="${this.escapeHtml(t)}" data-type="exc" title="Click to remove filter">− ${this.escapeHtml(t)} ✕</span>`;
+        }
+        chipsHtml += `<button type="button" class="active-chip-clear" id="btn-clear-active-chips" title="Clear all tag filters">Clear All</button>`;
+        chipsContainer.innerHTML = chipsHtml;
+      }
     }
   }
 
@@ -430,20 +701,35 @@ class WorkshopApp {
 
   renderMods() {
     const grid = document.getElementById("mods-grid");
-    const search = document.getElementById("mods-search-input").value.toLowerCase().trim();
-    const filter = document.getElementById("mods-filter-select").value;
-    const tagSelect = document.getElementById("mods-tag-select");
-    const selectedTag = tagSelect ? tagSelect.value : "";
+    if (!grid) return;
+
+    const searchInput = document.getElementById("mods-search-input");
+    const search = searchInput ? searchInput.value.toLowerCase().trim() : "";
+    const filterSelect = document.getElementById("mods-filter-select");
+    const filter = filterSelect ? filterSelect.value : "all";
 
     const filtered = this.installedMods.filter(mod => {
-      // Filter dropdown
+      // Special filter dropdown
       if (filter === "updates" && !mod.update_available) return false;
       if (filter === "steam" && mod.is_non_steam) return false;
       if (filter === "non-steam" && !mod.is_non_steam) return false;
 
-      // Tag filter
-      if (selectedTag && (!mod.tags || !mod.tags.includes(selectedTag))) {
-        return false;
+      const modTags = Array.isArray(mod.tags)
+        ? mod.tags.map(t => String(t).trim())
+        : [];
+
+      // Excluded tags (mod must NOT have any excluded tag)
+      for (const exTag of this.excludedTags) {
+        if (modTags.some(t => t.toLowerCase() === exTag.toLowerCase())) {
+          return false;
+        }
+      }
+
+      // Included tags (mod MUST have all included tags)
+      for (const inTag of this.includedTags) {
+        if (!modTags.some(t => t.toLowerCase() === inTag.toLowerCase())) {
+          return false;
+        }
       }
 
       // Search term
@@ -452,11 +738,16 @@ class WorkshopApp {
         const idMatch = (mod.mod_id || "").toLowerCase().includes(search);
         const authorMatch = (mod.author || "").toLowerCase().includes(search);
         const pkgMatch = (mod.package_id || "").toLowerCase().includes(search);
-        const tagsMatch = (mod.tags || []).some(t => String(t).toLowerCase().includes(search));
+        const tagsMatch = modTags.some(t => t.toLowerCase().includes(search));
         return titleMatch || idMatch || authorMatch || pkgMatch || tagsMatch;
       }
       return true;
     });
+
+    const showingCountEl = document.getElementById("mods-showing-count");
+    if (showingCountEl) {
+      showingCountEl.textContent = `Showing ${filtered.length} of ${this.installedMods.length} mods`;
+    }
 
     if (filtered.length === 0) {
       grid.innerHTML = `<div class="empty-state">No mods found matching current filter.</div>`;
@@ -504,7 +795,12 @@ class WorkshopApp {
             </div>
             ${mod.tags && mod.tags.length > 0 ? `
               <div class="mod-tags-container">
-                ${mod.tags.slice(0, 4).map(t => `<span class="mod-tag" data-tag="${this.escapeHtml(t)}" onclick="app.filterByTag('${this.escapeHtml(t)}')">${this.escapeHtml(t)}</span>`).join("")}
+                ${mod.tags.slice(0, 4).map(t => {
+                  const isInc = this.includedTags.has(t);
+                  const isExc = this.excludedTags.has(t);
+                  const activeClass = isInc ? "tag-is-included" : (isExc ? "tag-is-excluded" : "");
+                  return `<span class="mod-tag ${activeClass}" data-tag="${this.escapeHtml(t)}" onclick="app.filterByTag('${this.escapeHtml(t)}')">${this.escapeHtml(t)}</span>`;
+                }).join("")}
               </div>
             ` : ""}
             <div class="mod-footer">
@@ -711,6 +1007,63 @@ class WorkshopApp {
     }
   }
 
+  async retryDownload(modId, btnElement = null) {
+    let origHtml = "";
+    if (btnElement) {
+      origHtml = btnElement.innerHTML;
+      btnElement.disabled = true;
+      btnElement.innerHTML = `<span class="btn-spinner"></span>`;
+    }
+    try {
+      const res = await fetch("/api/mods/retry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mod_id: modId }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(err.detail || `Retry failed with status ${res.status}`);
+      }
+      this.showToast(`Queued ${modId} for retry`, "info");
+    } catch (e) {
+      this.showToast(`Error retrying download: ${e.message}`, "error");
+    } finally {
+      if (btnElement) {
+        btnElement.disabled = false;
+        btnElement.innerHTML = origHtml || "🔄 Retry";
+      }
+    }
+  }
+
+  async retryAllFailed() {
+    const btn = document.getElementById("btn-retry-failed");
+    const origHtml = btn ? btn.innerHTML : "";
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<span class="btn-spinner"></span> Retrying...`;
+    }
+    try {
+      const res = await fetch("/api/mods/retry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ retry_all: true }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(err.detail || `Retry failed with status ${res.status}`);
+      }
+      const data = await res.json();
+      this.showToast(data.message || "Queued failed items for retry", "info");
+    } catch (e) {
+      this.showToast(`Error retrying failed downloads: ${e.message}`, "error");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = origHtml || "🔄 Retry Failed";
+      }
+    }
+  }
+
   renderWorkers() {
     const container = document.getElementById("workers-cards");
     if (!this.workers || this.workers.length === 0) {
@@ -742,11 +1095,23 @@ class WorkshopApp {
     const tbody = document.getElementById("queue-table-body");
     const badge = document.getElementById("queue-count-badge");
     const summary = document.getElementById("queue-summary-text");
+    const retryFailedBtn = document.getElementById("btn-retry-failed");
 
     const activeOrPending = this.queueItems.filter(i => ["queued", "downloading", "installing"].includes(i.status));
+    const failedItems = this.queueItems.filter(i => i.status === "failed");
+
     badge.textContent = activeOrPending.length;
     badge.style.display = activeOrPending.length > 0 ? "inline-block" : "none";
     summary.textContent = `${activeOrPending.length} active/pending, ${this.queueItems.length} total`;
+
+    if (retryFailedBtn) {
+      if (failedItems.length > 0) {
+        retryFailedBtn.style.display = "inline-flex";
+        retryFailedBtn.innerHTML = `🔄 Retry Failed (${failedItems.length})`;
+      } else {
+        retryFailedBtn.style.display = "none";
+      }
+    }
 
     if (this.queueItems.length === 0) {
       tbody.innerHTML = `
@@ -761,10 +1126,20 @@ class WorkshopApp {
       let statusBadge = `<span class="badge">${item.status}</span>`;
       if (item.status === "downloading") statusBadge = `<span class="badge badge-accent">Downloading</span>`;
       else if (item.status === "completed") statusBadge = `<span class="badge" style="background-color: var(--accent-green); color:#000;">Completed</span>`;
-      else if (item.status === "failed") statusBadge = `<span class="badge" style="background-color: var(--accent-red);">Failed</span>`;
+      else if (item.status === "failed") {
+        const retriesText = item.retry_count > 0 ? ` (${item.retry_count} retries)` : "";
+        statusBadge = `<span class="badge" style="background-color: var(--accent-red);">Failed${retriesText}</span>`;
+      }
       else if (item.status === "cancelled") statusBadge = `<span class="badge">Cancelled</span>`;
 
       const workerText = item.worker_id !== null ? `Worker ${item.worker_id + 1}` : "-";
+
+      let actionHtml = "-";
+      if (["queued", "downloading"].includes(item.status)) {
+        actionHtml = `<button class="btn btn-outline btn-sm" onclick="app.cancelDownload('${item.mod_id}', this)">Cancel</button>`;
+      } else if (item.status === "failed" || item.status === "cancelled") {
+        actionHtml = `<button class="btn btn-primary btn-sm btn-retry" onclick="app.retryDownload('${item.mod_id}', this)">🔄 Retry</button>`;
+      }
 
       return `
         <tr>
@@ -784,9 +1159,7 @@ class WorkshopApp {
             <small style="color:var(--text-muted);">${item.progress}%</small>
           </td>
           <td>
-            ${["queued", "downloading"].includes(item.status) ? `
-              <button class="btn btn-outline btn-sm" onclick="app.cancelDownload('${item.mod_id}', this)">Cancel</button>
-            ` : "-"}
+            ${actionHtml}
           </td>
         </tr>
       `;
@@ -1480,6 +1853,10 @@ class WorkshopApp {
       const badge = document.getElementById("game-badge");
       if (badge) {
         badge.textContent = `${activeProfile.name} (${activeProfile.app_id})`;
+      }
+      const searchInput = document.getElementById("mods-search-input");
+      if (searchInput) {
+        searchInput.placeholder = `Search ${activeProfile.name || "RimWorld"}`;
       }
       const hint = document.getElementById("resolved-folder-hint");
       if (hint && data.resolved_download_path) {

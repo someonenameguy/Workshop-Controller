@@ -62,6 +62,16 @@ class AppSettings(BaseModel):
         default=True,
         description="Create a zip backup in backups/ before overwriting an existing mod.",
     )
+    auto_retry: bool = Field(
+        default=True,
+        description="Automatically retry failed SteamCMD downloads.",
+    )
+    max_retries: int = Field(
+        default=3,
+        ge=1,
+        le=10,
+        description="Maximum automatic retry attempts for failed downloads.",
+    )
     web_port: int = Field(
         default=8080,
         ge=1024,

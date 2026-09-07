@@ -109,3 +109,76 @@ async def test_api_profiles():
         assert res_del.status_code == 200
 
 
+@pytest.mark.asyncio
+async def test_api_mods_retry():
+    from src.core.worker_pool import DownloadItem, worker_pool
+
+    app = create_app()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        # Invalid request (neither mod_id nor retry_all)
+        res_bad = await ac.post("/api/mods/retry", json={})
+        assert res_bad.status_code == 400
+
+        # Mod not found
+        res_not_found = await ac.post("/api/mods/retry", json={"mod_id": "999999"})
+        assert res_not_found.status_code == 400
+
+        # Add failed item to worker_pool
+        item = DownloadItem(mod_id="55555", title="Retryable Mod", status="failed", error="Failed")
+        worker_pool.items["55555"] = item
+
+        # Retry single item
+        res_retry = await ac.post("/api/mods/retry", json={"mod_id": "55555"})
+        assert res_retry.status_code == 200
+        assert res_retry.json()["status"] == "success"
+        assert res_retry.json()["mod_id"] == "55555"
+        assert worker_pool.items["55555"].status == "queued"
+
+        # Retry all failed
+        item2 = DownloadItem(mod_id="66666", title="Another Failed Mod", status="failed")
+        worker_pool.items["66666"] = item2
+
+        res_retry_all = await ac.post("/api/mods/retry", json={"retry_all": True})
+        assert res_retry_all.status_code == 200
+        data = res_retry_all.json()
+        assert data["status"] == "success"
+        assert "66666" in data["retried_ids"]
+        assert worker_pool.items["66666"].status == "queued"
+
+
+@pytest.mark.asyncio
+async def test_api_settings_auto_retry():
+    app = create_app()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        res = await ac.post("/api/settings", json={"auto_retry": False, "max_retries": 4})
+        assert res.status_code == 200
+        settings = res.json()["settings"]
+        assert settings["auto_retry"] is False
+        assert settings["max_retries"] == 4
+
+        # Revert
+        res_rev = await ac.post("/api/settings", json={"auto_retry": True, "max_retries": 3})
+        assert res_rev.status_code == 200
+        assert res_rev.json()["settings"]["auto_retry"] is True
+        assert res_rev.json()["settings"]["max_retries"] == 3
+
+
+@pytest.mark.asyncio
+async def test_index_page_steam_filter_sidebar():
+    app = create_app()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        res = await ac.get("/")
+        assert res.status_code == 200
+        html = res.text
+        assert 'id="steam-filter-sidebar"' in html
+        assert 'id="steam-tags-container"' in html
+        assert 'id="mods-search-input"' in html
+        assert 'id="btn-reset-filters"' in html
+        assert 'id="active-filter-chips"' in html
+
+
+
+
