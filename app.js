@@ -326,9 +326,21 @@
   /* ==========================================================================
      4. INTERACTIVE DEMO SIMULATOR
      ========================================================================== */
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
   const DemoSimulator = {
     // Current Active Game Profile
     activeAppId: '294100',
+    includedTags: new Set(),
+    excludedTags: new Set(),
 
     // Game Database Definitions
     games: {
@@ -340,7 +352,7 @@
             id: '2009463077',
             title: 'Harmony',
             author: 'Andreas Pardeike',
-            tags: ['Framework', '1.5', '1.6'],
+            tags: ['Mod', 'Framework', '1.5', '1.6', 'Royalty'],
             status: 'up-to-date',
             size: '1.2 MB',
             desc: 'A library for patching, replacing and decorating .NET and Mono methods during runtime.',
@@ -351,7 +363,7 @@
             id: '818773962',
             title: 'HugsLib',
             author: 'UnlimitedHugs',
-            tags: ['Framework', '1.5'],
+            tags: ['Mod', 'Framework', '1.5', 'Biotech'],
             status: 'up-to-date',
             size: '840 KB',
             desc: 'Shared foundational mod library for quick development and automated log reporting.',
@@ -362,7 +374,7 @@
             id: '2890901001',
             title: 'Combat Extended',
             author: 'CE Team',
-            tags: ['Gameplay', '1.5'],
+            tags: ['Mod', 'Gameplay', '1.5', 'Biotech', 'Ideology'],
             status: 'update-available',
             size: '48.5 MB',
             desc: 'Completely overhauls RimWorld combat, ballistics, ammunition, and armor mechanics.',
@@ -373,7 +385,7 @@
             id: '2023507013',
             title: 'Vanilla Expanded Framework',
             author: 'Oskar Potocki',
-            tags: ['Framework', '1.5', '1.6'],
+            tags: ['Mod', 'Framework', '1.5', '1.6', 'Biotech', 'Anomaly'],
             status: 'update-available',
             size: '24.1 MB',
             desc: 'Essential framework required by all Vanilla Expanded series mods.',
@@ -384,7 +396,7 @@
             id: '735106432',
             title: 'EdB Prepare Carefully',
             author: 'edbmods',
-            tags: ['Gameplay', '1.5'],
+            tags: ['Mod', 'Gameplay', '1.4', '1.5', 'Royalty'],
             status: 'up-to-date',
             size: '3.6 MB',
             desc: 'Customize your colonists, equipment, and starting resources before landing.',
@@ -395,7 +407,7 @@
             id: '2479389928',
             title: 'RocketMan - Performance Mod',
             author: 'Madman',
-            tags: ['Gameplay', '1.5', '1.6'],
+            tags: ['Mod', 'Gameplay', '1.5', '1.6', 'Anomaly', 'Ideology'],
             status: 'up-to-date',
             size: '2.1 MB',
             desc: 'Vastly improves late-game tick rate and framerate through caching and optimization.',
@@ -720,41 +732,252 @@
         settingsPath.value = game.path;
       }
 
+      // Clear filters on profile switch
+      this.includedTags.clear();
+      this.excludedTags.clear();
+
+      // Reset search input & placeholder
+      const searchInput = document.getElementById('demo-search-input');
+      if (searchInput) {
+        searchInput.value = '';
+        searchInput.placeholder = `Search ${game.name}`;
+      }
+      const statusSelect = document.getElementById('demo-status-select');
+      if (statusSelect) statusSelect.value = 'all';
+
       // Populate tag filters dynamically for the active game
       this.populateTagFilter();
 
-      // Reset search/filter inputs
-      const searchInput = document.getElementById('demo-search-input');
-      const statusSelect = document.getElementById('demo-status-select');
-      if (searchInput) searchInput.value = '';
-      if (statusSelect) statusSelect.value = 'all';
-
       // Re-render mods grid
-      this.renderMods();
+      this.filterMods();
 
       Toast.show(`🎮 Switched active profile to <strong>${game.name}</strong> (${appId})`, 'info');
       this.appendConsoleLog('ProfileManager', `Switched active profile to ${game.name} (AppID: ${appId}) — Target: ${game.path}`);
     },
 
+    renderTagRow(tag, count) {
+      const isInc = this.includedTags.has(tag);
+      const isExc = this.excludedTags.has(tag);
+      const rowClass = isInc ? 'is-included' : (isExc ? 'is-excluded' : '');
+      const incClass = isInc ? 'active' : '';
+      const excClass = isExc ? 'active' : '';
+      const countHtml = count > 0 ? `<span class="steam-tag-count">(${count})</span>` : '';
+
+      return `
+        <div class="steam-tag-row ${rowClass}">
+          <button type="button" class="steam-tag-btn steam-tag-btn-include ${incClass}" data-tag="${escapeHtml(tag)}" title="Include '${escapeHtml(tag)}'">
+            <span>+</span>
+          </button>
+          <button type="button" class="steam-tag-btn steam-tag-btn-exclude ${excClass}" data-tag="${escapeHtml(tag)}" title="Exclude '${escapeHtml(tag)}'">
+            <span>−</span>
+          </button>
+          <span class="steam-tag-label" data-tag="${escapeHtml(tag)}" title="${escapeHtml(tag)}">
+            <span class="steam-tag-name">${escapeHtml(tag)}</span>
+            ${countHtml}
+          </span>
+        </div>
+      `;
+    },
+
     populateTagFilter() {
-      const tagSelect = document.getElementById('demo-tag-select');
-      if (!tagSelect) return;
+      const container = document.getElementById('demo-steam-tags-container');
+      if (!container) return;
 
-      const currentMods = this.games[this.activeAppId].mods;
-      const tagSet = new Set();
-      currentMods.forEach((m) => {
-        if (Array.isArray(m.tags)) {
-          m.tags.forEach((t) => tagSet.add(t));
+      const game = this.games[this.activeAppId];
+      const searchInput = document.getElementById('demo-search-input');
+      if (searchInput && game) {
+        searchInput.placeholder = `Search ${game.name}`;
+      }
+
+      const currentMods = game.mods;
+      const tagCounts = new Map();
+
+      for (const mod of currentMods) {
+        if (Array.isArray(mod.tags)) {
+          for (const tag of mod.tags) {
+            if (!tag) continue;
+            const trimmed = String(tag).trim();
+            if (trimmed) {
+              tagCounts.set(trimmed, (tagCounts.get(trimmed) || 0) + 1);
+            }
+          }
         }
-      });
+      }
 
-      tagSelect.innerHTML = '<option value="">All Tags</option>';
-      Array.from(tagSet).sort().forEach((tag) => {
-        const opt = document.createElement('option');
-        opt.value = tag;
-        opt.textContent = tag;
-        tagSelect.appendChild(opt);
-      });
+      const isRimWorld = this.activeAppId === '294100' || (game.name && game.name.toLowerCase().includes('rimworld'));
+      const STANDARD_TYPES = ['Mod', 'Translation', 'Scenario'];
+      const RIMWORLD_DLCS = ['Anomaly', 'Biotech', 'Ideology', 'Odyssey', 'Royalty', 'Name in Game Access'];
+
+      const isVersion = (t) => /^\d+(\.\d+)+$/.test(t.trim());
+      const sortVersionsAsc = (a, b) => {
+        const pA = a.split('.').map(Number);
+        const pB = b.split('.').map(Number);
+        for (let i = 0; i < Math.max(pA.length, pB.length); i++) {
+          const vA = pA[i] ?? 0;
+          const vB = pB[i] ?? 0;
+          if (vA !== vB) return vA - vB;
+        }
+        return 0;
+      };
+
+      // 1. Categories group (Types first, then Versions)
+      const categoryTags = [];
+      for (const st of STANDARD_TYPES) {
+        const foundKey = Array.from(tagCounts.keys()).find(k => k.toLowerCase() === st.toLowerCase());
+        if (foundKey || isRimWorld) {
+          categoryTags.push({ name: foundKey || st, count: tagCounts.get(foundKey) || 0 });
+        }
+      }
+
+      const versionKeys = Array.from(tagCounts.keys()).filter(isVersion).sort(sortVersionsAsc);
+      for (const vk of versionKeys) {
+        categoryTags.push({ name: vk, count: tagCounts.get(vk) || 0 });
+      }
+
+      // 2. Required DLC group
+      const dlcTags = [];
+      if (isRimWorld) {
+        for (const dlc of RIMWORLD_DLCS) {
+          const foundKey = Array.from(tagCounts.keys()).find(k => k.toLowerCase() === dlc.toLowerCase());
+          dlcTags.push({ name: foundKey || dlc, count: tagCounts.get(foundKey) || 0 });
+        }
+      } else {
+        const isDlc = (t) => /dlc|expansion|pack/i.test(t);
+        const matchingDlcs = Array.from(tagCounts.keys()).filter(isDlc).sort();
+        for (const d of matchingDlcs) {
+          dlcTags.push({ name: d, count: tagCounts.get(d) || 0 });
+        }
+      }
+
+      // 3. Other Tags
+      const handledTagNames = new Set([
+        ...categoryTags.map(c => c.name.toLowerCase()),
+        ...dlcTags.map(d => d.name.toLowerCase()),
+      ]);
+
+      const otherTagKeys = Array.from(tagCounts.keys())
+        .filter(k => !handledTagNames.has(k.toLowerCase()))
+        .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+
+      const otherTags = otherTagKeys.map(k => ({ name: k, count: tagCounts.get(k) || 0 }));
+
+      // Build sidebar sections HTML
+      let html = '';
+
+      if (categoryTags.length > 0) {
+        html += `
+          <div class="steam-filter-group">
+            <div class="steam-filter-heading">CATEGORIES</div>
+            <div class="steam-tags-scroll">
+              ${categoryTags.map(item => this.renderTagRow(item.name, item.count)).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      if (dlcTags.length > 0) {
+        html += `
+          <div class="steam-filter-group">
+            <div class="steam-filter-heading">REQUIRED DLC</div>
+            <div class="steam-tags-scroll">
+              ${dlcTags.map(item => this.renderTagRow(item.name, item.count)).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      if (otherTags.length > 0) {
+        html += `
+          <div class="steam-filter-group">
+            <div class="steam-filter-heading">OTHER TAGS</div>
+            <div class="steam-tags-scroll">
+              ${otherTags.map(item => this.renderTagRow(item.name, item.count)).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      container.innerHTML = html;
+      this.updateTagUI();
+    },
+
+    toggleTagInclude(tag) {
+      if (this.includedTags.has(tag)) {
+        this.includedTags.delete(tag);
+      } else {
+        this.includedTags.add(tag);
+        this.excludedTags.delete(tag);
+      }
+      this.updateTagUI();
+      this.filterMods();
+    },
+
+    toggleTagExclude(tag) {
+      if (this.excludedTags.has(tag)) {
+        this.excludedTags.delete(tag);
+      } else {
+        this.excludedTags.add(tag);
+        this.includedTags.delete(tag);
+      }
+      this.updateTagUI();
+      this.filterMods();
+    },
+
+    filterByTag(tag) {
+      this.toggleTagInclude(tag);
+    },
+
+    resetAllFilters() {
+      const searchInput = document.getElementById('demo-search-input');
+      if (searchInput) searchInput.value = '';
+      const statusSelect = document.getElementById('demo-status-select');
+      if (statusSelect) statusSelect.value = 'all';
+      const chkIncompatible = document.getElementById('demo-chk-show-incompatible');
+      if (chkIncompatible) chkIncompatible.checked = false;
+
+      this.includedTags.clear();
+      this.excludedTags.clear();
+      this.updateTagUI();
+      this.filterMods();
+    },
+
+    updateTagUI() {
+      const container = document.getElementById('demo-steam-tags-container');
+      if (container) {
+        const rows = container.querySelectorAll('.steam-tag-row');
+        rows.forEach((row) => {
+          const incBtn = row.querySelector('.steam-tag-btn-include');
+          const excBtn = row.querySelector('.steam-tag-btn-exclude');
+          const tag = incBtn ? incBtn.dataset.tag : null;
+          if (!tag) return;
+
+          const isInc = this.includedTags.has(tag);
+          const isExc = this.excludedTags.has(tag);
+
+          row.classList.toggle('is-included', isInc);
+          row.classList.toggle('is-excluded', isExc);
+          if (incBtn) incBtn.classList.toggle('active', isInc);
+          if (excBtn) excBtn.classList.toggle('active', isExc);
+        });
+      }
+
+      const chipsContainer = document.getElementById('demo-active-filter-chips');
+      if (chipsContainer) {
+        const hasAny = this.includedTags.size > 0 || this.excludedTags.size > 0;
+        if (!hasAny) {
+          chipsContainer.innerHTML = '';
+        } else {
+          let chipsHtml = '';
+          for (const t of this.includedTags) {
+            chipsHtml += `<span class="active-chip active-chip-inc" data-tag="${escapeHtml(t)}" data-type="inc" title="Click to remove filter">+ ${escapeHtml(t)} ✕</span>`;
+          }
+          for (const t of this.excludedTags) {
+            chipsHtml += `<span class="active-chip active-chip-exc" data-tag="${escapeHtml(t)}" data-type="exc" title="Click to remove filter">− ${escapeHtml(t)} ✕</span>`;
+          }
+          chipsHtml += `<button type="button" class="active-chip-clear" id="demo-btn-clear-active-chips" title="Clear all tag filters">Clear All</button>`;
+          chipsContainer.innerHTML = chipsHtml;
+        }
+      }
     },
 
     /* --------------------------------------------------------------------------
@@ -771,9 +994,66 @@
         statusSelect.addEventListener('change', () => this.filterMods());
       }
 
-      const tagSelect = document.getElementById('demo-tag-select');
-      if (tagSelect) {
-        tagSelect.addEventListener('change', () => this.filterMods());
+      const resetBtn = document.getElementById('demo-btn-reset-filters');
+      if (resetBtn) {
+        resetBtn.addEventListener('click', () => this.resetAllFilters());
+      }
+
+      const resetCog = document.getElementById('demo-btn-reset-filters-cog');
+      if (resetCog) {
+        resetCog.addEventListener('click', () => this.resetAllFilters());
+      }
+
+      const chkIncompatible = document.getElementById('demo-chk-show-incompatible');
+      if (chkIncompatible) {
+        chkIncompatible.addEventListener('change', () => this.filterMods());
+      }
+
+      const tagsContainer = document.getElementById('demo-steam-tags-container');
+      if (tagsContainer) {
+        tagsContainer.addEventListener('click', (e) => {
+          const incBtn = e.target.closest('.steam-tag-btn-include');
+          if (incBtn && incBtn.dataset.tag) {
+            e.stopPropagation();
+            this.toggleTagInclude(incBtn.dataset.tag);
+            return;
+          }
+          const excBtn = e.target.closest('.steam-tag-btn-exclude');
+          if (excBtn && excBtn.dataset.tag) {
+            e.stopPropagation();
+            this.toggleTagExclude(excBtn.dataset.tag);
+            return;
+          }
+          const labelEl = e.target.closest('.steam-tag-label');
+          if (labelEl && labelEl.dataset.tag) {
+            this.toggleTagInclude(labelEl.dataset.tag);
+          }
+        });
+      }
+
+      const chipsContainer = document.getElementById('demo-active-filter-chips');
+      if (chipsContainer) {
+        chipsContainer.addEventListener('click', (e) => {
+          const chip = e.target.closest('.active-chip');
+          if (chip) {
+            const tag = chip.dataset.tag;
+            const type = chip.dataset.type;
+            if (type === 'inc') this.toggleTagInclude(tag);
+            else if (type === 'exc') this.toggleTagExclude(tag);
+          } else if (e.target.closest('#demo-btn-clear-active-chips')) {
+            this.resetAllFilters();
+          }
+        });
+      }
+
+      const grid = document.getElementById('demo-mods-grid');
+      if (grid) {
+        grid.addEventListener('click', (e) => {
+          const tagEl = e.target.closest('.mod-tag');
+          if (tagEl && tagEl.dataset.tag) {
+            this.toggleTagInclude(tagEl.dataset.tag);
+          }
+        });
       }
 
       const checkBtn = document.getElementById('demo-btn-check-updates');
@@ -791,7 +1071,8 @@
         quickUpdateBtn.addEventListener('click', () => this.updateAllOutdated());
       }
 
-      this.renderMods();
+      this.populateTagFilter();
+      this.filterMods();
     },
 
     renderMods(filteredList = null) {
@@ -824,8 +1105,13 @@
             ? `<span class="badge badge-warning">⬆ Update Available</span>`
             : `<span class="badge badge-success">✓ Up to date</span>`;
 
-          const tagBadges = mod.tags
-            .map((t) => `<span class="mod-tag">${t}</span>`)
+          const tagBadges = (mod.tags || [])
+            .map((t) => {
+              const isInc = this.includedTags.has(t);
+              const isExc = this.excludedTags.has(t);
+              const activeClass = isInc ? 'tag-is-included' : (isExc ? 'tag-is-excluded' : '');
+              return `<span class="mod-tag ${activeClass}" data-tag="${escapeHtml(t)}">${escapeHtml(t)}</span>`;
+            })
             .join(' ');
 
           return `
@@ -833,26 +1119,26 @@
               <div class="mod-card-header">
                 <div class="mod-icon">${mod.icon || '📦'}</div>
                 <div class="mod-title-box">
-                  <h4 class="mod-title">${mod.title}</h4>
-                  <div class="mod-author">by <span>${mod.author}</span></div>
+                  <h4 class="mod-title">${escapeHtml(mod.title)}</h4>
+                  <div class="mod-author">by <span>${escapeHtml(mod.author)}</span></div>
                 </div>
                 ${statusBadge}
               </div>
               
-              <p class="mod-desc">${mod.desc}</p>
+              <p class="mod-desc">${escapeHtml(mod.desc)}</p>
 
               <div class="mod-meta-row">
                 <div class="mod-tags">${tagBadges}</div>
-                <span class="mod-size">${mod.size}</span>
+                <span class="mod-size">${escapeHtml(mod.size)}</span>
               </div>
 
               <div class="mod-footer">
-                <span class="mod-id-code">ID: ${mod.id}</span>
+                <span class="mod-id-code">ID: ${escapeHtml(mod.id)}</span>
                 <div class="mod-actions">
                   ${
                     isOutdated
-                      ? `<button class="btn btn-warning btn-xs btn-mod-update" data-id="${mod.id}">⬆ Update</button>`
-                      : `<button class="btn btn-secondary btn-xs btn-mod-view" data-id="${mod.id}">📁 Files</button>`
+                      ? `<button class="btn btn-warning btn-xs btn-mod-update" data-id="${escapeHtml(mod.id)}">⬆ Update</button>`
+                      : `<button class="btn btn-secondary btn-xs btn-mod-view" data-id="${escapeHtml(mod.id)}">📁 Files</button>`
                   }
                 </div>
               </div>
@@ -882,36 +1168,52 @@
     filterMods() {
       const searchInput = document.getElementById('demo-search-input');
       const statusSelect = document.getElementById('demo-status-select');
-      const tagSelect = document.getElementById('demo-tag-select');
 
       const query = (searchInput ? searchInput.value : '').toLowerCase().trim();
       const status = statusSelect ? statusSelect.value : 'all';
-      const tag = tagSelect ? tagSelect.value : '';
 
       const currentMods = this.games[this.activeAppId].mods;
 
       const filtered = currentMods.filter((mod) => {
-        const matchesQuery =
-          !query ||
-          mod.title.toLowerCase().includes(query) ||
-          mod.author.toLowerCase().includes(query) ||
-          mod.id.includes(query) ||
-          (Array.isArray(mod.tags) && mod.tags.some((t) => t.toLowerCase().includes(query)));
+        // Special filter
+        if (status === 'updates' && mod.status !== 'update-available') return false;
+        if (status === 'steam' && !mod.steam) return false;
+        if (status === 'non-steam' && mod.steam) return false;
 
-        let matchesStatus = true;
-        if (status === 'updates') {
-          matchesStatus = mod.status === 'update-available';
-        } else if (status === 'steam') {
-          matchesStatus = mod.steam === true;
+        const modTags = Array.isArray(mod.tags)
+          ? mod.tags.map(t => String(t).trim())
+          : [];
+
+        // Excluded tags (mod must NOT have any excluded tag)
+        for (const exTag of this.excludedTags) {
+          if (modTags.some(t => t.toLowerCase() === exTag.toLowerCase())) {
+            return false;
+          }
         }
 
-        let matchesTag = true;
-        if (tag) {
-          matchesTag = Array.isArray(mod.tags) && mod.tags.includes(tag);
+        // Included tags (mod must have ALL included tags)
+        for (const inTag of this.includedTags) {
+          if (!modTags.some(t => t.toLowerCase() === inTag.toLowerCase())) {
+            return false;
+          }
         }
 
-        return matchesQuery && matchesStatus && matchesTag;
+        // Search text
+        if (query) {
+          const titleMatch = (mod.title || '').toLowerCase().includes(query);
+          const authorMatch = (mod.author || '').toLowerCase().includes(query);
+          const idMatch = (mod.id || '').includes(query);
+          const tagsMatch = modTags.some(t => t.toLowerCase().includes(query));
+          if (!titleMatch && !authorMatch && !idMatch && !tagsMatch) return false;
+        }
+
+        return true;
       });
+
+      const countEl = document.getElementById('demo-mods-showing-count');
+      if (countEl) {
+        countEl.textContent = `Showing ${filtered.length} of ${currentMods.length} mods`;
+      }
 
       this.renderMods(filtered);
     },

@@ -255,47 +255,73 @@
 
           <!-- TAB 1: INSTALLED MODS -->
           <div class="demo-pane active" id="demo-pane-mods" role="tabpanel" aria-labelledby="tab-btn-mods">
-            <div class="demo-toolbar">
-              <div class="demo-search-box">
-                <span class="search-ico" aria-hidden="true">🔍</span>
-                <label for="demo-search-input" class="sr-only">Search installed mods</label>
-                <input type="text" id="demo-search-input" placeholder="Search installed mods by title, author, ID...">
-              </div>
-              <div class="demo-filters">
-                <label for="demo-status-select" class="sr-only">Filter by update status</label>
-                <select id="demo-status-select" class="demo-filter-select">
-                  <option value="all">All Mods</option>
-                  <option value="updates">Updates Available Only</option>
-                  <option value="steam">Steam Workshop Only</option>
-                </select>
-                <label for="demo-tag-select" class="sr-only">Filter by category tag</label>
-                <select id="demo-tag-select" class="demo-filter-select">
-                  <option value="">🏷️ All Tags</option>
-                </select>
-              </div>
-              <div class="demo-toolbar-buttons">
-                <button class="btn btn-primary btn-sm" id="demo-btn-check-updates">
-                  🔄 Check Updates
-                </button>
-                <button class="btn btn-success btn-sm" id="demo-btn-update-all" style="display: none;">
-                  ⬆️ Update All Outdated (<span id="demo-outdated-count">2</span>)
-                </button>
-              </div>
-            </div>
+            <div class="mods-layout">
+              <!-- Steam Workshop Filters Sidebar -->
+              <aside class="steam-filter-sidebar" id="demo-steam-filter-sidebar">
+                <div class="steam-filter-search-wrap">
+                  <input type="text" id="demo-search-input" class="steam-search-input" placeholder="Search RimWorld" autocomplete="off" spellcheck="false">
+                  <button class="steam-search-cog-btn" id="demo-btn-reset-filters-cog" title="Reset search & filters">⚙</button>
+                </div>
 
-            <!-- Simulated Updates Banner -->
-            <div class="alert-banner alert-warning" id="demo-updates-banner" style="display: none;">
-              <div class="alert-emoji" style="font-size: 1.4rem;">🔔</div>
-              <div class="alert-info">
-                <strong>2 Updates Available on Steam Workshop!</strong>
-                <p>New versions detected. Automatic zip rollback backups will be archived to <code>backups/</code> before updating.</p>
-              </div>
-              <button class="btn btn-warning btn-sm" id="demo-btn-quick-update" style="margin-left: auto;">Update Now</button>
-            </div>
+                <div class="steam-filter-section">
+                  <div class="steam-filter-heading">SPECIAL FILTERS:</div>
+                  <select id="demo-status-select" class="steam-select-control">
+                    <option value="all">None</option>
+                    <option value="updates">Updates Available Only</option>
+                    <option value="steam">Steam Workshop Only</option>
+                    <option value="non-steam">Non-Steam / Local Only</option>
+                  </select>
+                </div>
 
-            <!-- Mod Cards Grid -->
-            <div class="demo-mods-grid" id="demo-mods-grid">
-              <!-- Injected dynamically by app.js -->
+                <div id="demo-steam-tags-container" class="steam-tags-container">
+                  <!-- Dynamically populated categories & DLC sections -->
+                </div>
+
+                <div class="steam-filter-actions">
+                  <button class="steam-date-btn" id="demo-btn-reset-filters">Reset Filters</button>
+                </div>
+
+                <div class="steam-incompatible-note">
+                  <p>Some items are not possible to include in the game. You can still find them if you select this box.</p>
+                  <label class="steam-checkbox-label">
+                    <input type="checkbox" id="demo-chk-show-incompatible">
+                    <span>Show incompatible items</span>
+                  </label>
+                </div>
+              </aside>
+
+              <!-- Main Content Area -->
+              <div class="mods-main-area">
+                <div class="mods-main-header">
+                  <div class="mods-summary-row">
+                    <span class="mods-showing-count" id="demo-mods-showing-count">Showing 6 of 6 mods</span>
+                    <div class="active-filter-chips" id="demo-active-filter-chips"></div>
+                  </div>
+                  <div class="toolbar-actions">
+                    <button class="btn btn-primary btn-sm" id="demo-btn-check-updates">
+                      🔄 Check Updates
+                    </button>
+                    <button class="btn btn-success btn-sm" id="demo-btn-update-all" style="display: none;">
+                      ⬆️ Update All Outdated (<span id="demo-outdated-count">2</span>)
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Simulated Updates Banner -->
+                <div class="alert-banner alert-warning" id="demo-updates-banner" style="display: none;">
+                  <div class="alert-emoji" style="font-size: 1.4rem;">🔔</div>
+                  <div class="alert-info">
+                    <strong>2 Updates Available on Steam Workshop!</strong>
+                    <p>New versions detected. Automatic zip rollback backups will be archived to <code>backups/</code> before updating.</p>
+                  </div>
+                  <button class="btn btn-warning btn-sm" id="demo-btn-quick-update" style="margin-left: auto;">Update Now</button>
+                </div>
+
+                <!-- Mod Cards Grid -->
+                <div class="demo-mods-grid" id="demo-mods-grid">
+                  <!-- Injected dynamically by app.js -->
+                </div>
+              </div>
             </div>
           </div>
 

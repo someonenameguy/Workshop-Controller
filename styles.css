@@ -1315,6 +1315,390 @@ code, kbd, samp, pre {
   align-items: center;
 }
 
+/* ================= Steam-Style Mods Layout & Filter Sidebar ================= */
+.mods-layout {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.steam-filter-sidebar {
+  width: 250px;
+  min-width: 250px;
+  background-color: #17202d;
+  background-image: linear-gradient(180deg, #1b2838 0%, #16202d 100%);
+  border: 1px solid #2a3f5a;
+  border-radius: var(--radius-md);
+  padding: 14px 12px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.steam-filter-search-wrap {
+  display: flex;
+  align-items: center;
+  background: #101822;
+  border: 1px solid #2a3f5a;
+  border-radius: var(--radius-sm);
+  margin-bottom: 14px;
+  padding: 2px 4px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.steam-filter-search-wrap:focus-within {
+  border-color: #67c1f5;
+  box-shadow: 0 0 8px rgba(103, 193, 245, 0.25);
+}
+
+.steam-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  font-style: italic;
+  padding: 6px 8px;
+  outline: none;
+  min-width: 0;
+}
+
+.steam-search-input::placeholder {
+  color: #626f7d;
+  font-style: italic;
+}
+
+.steam-search-cog-btn {
+  background: transparent;
+  border: none;
+  color: #626f7d;
+  font-size: 14px;
+  padding: 4px 6px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: color 0.15s ease, background 0.15s ease;
+  line-height: 1;
+}
+
+.steam-search-cog-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.steam-filter-section {
+  margin-bottom: 14px;
+}
+
+.steam-filter-heading {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #8f98a0;
+  margin-bottom: 7px;
+  user-select: none;
+}
+
+.steam-select-control {
+  width: 100%;
+  background-color: #212c3d;
+  border: 1px solid #2a3f5a;
+  border-radius: var(--radius-sm);
+  color: #c6d4df;
+  font-family: inherit;
+  font-size: 12px;
+  padding: 6px 10px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.steam-select-control:focus,
+.steam-select-control:hover {
+  border-color: #67c1f5;
+}
+
+.steam-select-control option {
+  background-color: #17202d;
+  color: #c6d4df;
+}
+
+.steam-tags-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.steam-filter-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.steam-tags-scroll {
+  max-height: 220px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+  margin-right: -4px;
+}
+
+/* Custom Steam Scrollbar */
+.steam-tags-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.steam-tags-scroll::-webkit-scrollbar-track {
+  background: #101822;
+  border-radius: 3px;
+}
+
+.steam-tags-scroll::-webkit-scrollbar-thumb {
+  background: #3d4450;
+  border-radius: 3px;
+}
+
+.steam-tags-scroll::-webkit-scrollbar-thumb:hover {
+  background: #556070;
+}
+
+/* Steam Tag Row */
+.steam-tag-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 2px;
+  font-size: 12px;
+  line-height: 1.35;
+  user-select: none;
+  border-radius: 2px;
+  transition: background-color 0.12s ease;
+}
+
+.steam-tag-row:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.steam-tag-btn {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  border-radius: 2px;
+  background-color: #243040;
+  border: 1px solid #36495f;
+  color: #8f98a0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  transition: all 0.15s ease;
+}
+
+.steam-tag-btn:hover {
+  background-color: #314257;
+  border-color: #537090;
+  color: #fff;
+}
+
+/* Active Include (+) State */
+.steam-tag-btn-include.active {
+  background-color: #1999e3;
+  border-color: #67c1f5;
+  color: #fff;
+  box-shadow: 0 0 6px rgba(25, 153, 227, 0.5);
+}
+
+/* Active Exclude (-) State */
+.steam-tag-btn-exclude.active {
+  background-color: #c23c2a;
+  border-color: #f87171;
+  color: #fff;
+  box-shadow: 0 0 6px rgba(194, 60, 42, 0.5);
+}
+
+.steam-tag-label {
+  color: #c6d4df;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.steam-tag-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.steam-tag-label:hover {
+  color: #fff;
+}
+
+.steam-tag-row.is-included .steam-tag-label {
+  color: #67c1f5;
+  font-weight: 600;
+}
+
+.steam-tag-row.is-excluded .steam-tag-label {
+  color: #f87171;
+  text-decoration: line-through;
+  opacity: 0.75;
+}
+
+.steam-tag-count {
+  font-size: 10px;
+  color: #626f7d;
+  font-weight: normal;
+  flex-shrink: 0;
+}
+
+/* Actions in Steam Sidebar */
+.steam-filter-actions {
+  margin-top: 14px;
+  margin-bottom: 12px;
+}
+
+.steam-date-btn {
+  width: 100%;
+  background: #2b3949;
+  border: 1px solid #384b60;
+  color: #c6d4df;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.steam-date-btn:hover {
+  background: #3a4d63;
+  color: #fff;
+  border-color: #67c1f5;
+}
+
+.steam-incompatible-note {
+  font-size: 11px;
+  color: #8f98a0;
+  line-height: 1.35;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 10px;
+}
+
+.steam-incompatible-note p {
+  margin-bottom: 6px;
+}
+
+.steam-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  color: #b8c6d4;
+  user-select: none;
+}
+
+.steam-checkbox-label input[type="checkbox"] {
+  accent-color: #1999e3;
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+/* Main Area */
+.mods-main-area {
+  flex: 1;
+  min-width: 0;
+}
+
+.mods-main-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.mods-summary-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mods-showing-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.active-filter-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.active-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.active-chip-inc {
+  background-color: rgba(25, 153, 227, 0.18);
+  border: 1px solid #1999e3;
+  color: #67c1f5;
+}
+
+.active-chip-inc:hover {
+  background-color: rgba(25, 153, 227, 0.35);
+}
+
+.active-chip-exc {
+  background-color: rgba(194, 60, 42, 0.18);
+  border: 1px solid #c23c2a;
+  color: #f87171;
+}
+
+.active-chip-exc:hover {
+  background-color: rgba(194, 60, 42, 0.35);
+}
+
+.active-chip-clear {
+  background-color: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.active-chip-clear:hover {
+  background-color: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
 /* Demo Mod Cards Grid */
 .mods-grid,
 .demo-mods-grid {
@@ -1408,6 +1792,30 @@ code, kbd, samp, pre {
   padding: 0.15rem 0.45rem;
   border-radius: var(--radius-xs);
   border: 1px solid rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.mod-tag:hover {
+  background-color: rgba(56, 189, 248, 0.2);
+  border-color: var(--accent-cyan);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.mod-tag.tag-is-included {
+  background-color: rgba(25, 153, 227, 0.25);
+  border-color: #67c1f5;
+  color: #67c1f5;
+  font-weight: 600;
+}
+
+.mod-tag.tag-is-excluded {
+  background-color: rgba(194, 60, 42, 0.25);
+  border-color: #f87171;
+  color: #fca5a5;
+  text-decoration: line-through;
 }
 
 .mod-size {
@@ -2991,6 +3399,18 @@ select:focus:not(:focus-visible) {
 
   .arch-node {
     max-width: 180px;
+  }
+}
+
+@media (max-width: 960px) {
+  .mods-layout {
+    flex-direction: column;
+  }
+
+  .steam-filter-sidebar {
+    width: 100%;
+    min-width: 0;
+    position: static;
   }
 }
 
