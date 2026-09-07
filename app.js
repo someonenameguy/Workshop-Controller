@@ -22,6 +22,115 @@
   'use strict';
 
   /* ==========================================================================
+     0. THEME MANAGER ENGINE (Steam Theme Default + Obsidian Switcher)
+     ========================================================================== */
+  const ThemeManager = {
+    STORAGE_KEY: 'workshop_controller_theme',
+    currentTheme: 'steam',
+
+    init() {
+      // 1. Check localStorage or default to 'steam'
+      let savedTheme = 'steam';
+      try {
+        savedTheme = localStorage.getItem(this.STORAGE_KEY) || 'steam';
+      } catch (e) {
+        savedTheme = 'steam';
+      }
+
+      this.setTheme(savedTheme, false);
+      this.bindEvents();
+    },
+
+    setTheme(theme, notify = true) {
+      this.currentTheme = theme === 'obsidian' ? 'obsidian' : 'steam';
+      document.documentElement.setAttribute('data-theme', this.currentTheme);
+
+      try {
+        localStorage.setItem(this.STORAGE_KEY, this.currentTheme);
+      } catch (e) {
+        // Ignore localStorage restrictions
+      }
+
+      // Update navbar toggle button
+      const navBtn = document.getElementById('theme-toggle');
+      if (navBtn) {
+        const icon = navBtn.querySelector('.theme-icon');
+        const label = navBtn.querySelector('.theme-label');
+        if (this.currentTheme === 'steam') {
+          if (icon) icon.textContent = '💨';
+          if (label) label.textContent = 'Steam Theme';
+          navBtn.setAttribute('title', 'Currently using Steam Theme. Click to switch to Obsidian Cyber.');
+        } else {
+          if (icon) icon.textContent = '🌌';
+          if (label) label.textContent = 'Obsidian Cyber';
+          navBtn.setAttribute('title', 'Currently using Obsidian Cyber Theme. Click to switch to Steam Theme.');
+        }
+      }
+
+      // Update mobile drawer toggle button
+      const mobileBtn = document.getElementById('mobile-theme-toggle');
+      if (mobileBtn) {
+        const mIcon = mobileBtn.querySelector('.theme-icon');
+        const mLabel = mobileBtn.querySelector('.theme-label');
+        if (this.currentTheme === 'steam') {
+          if (mIcon) mIcon.textContent = '💨';
+          if (mLabel) mLabel.textContent = 'Theme: Steam Classic (Click to toggle)';
+        } else {
+          if (mIcon) mIcon.textContent = '🌌';
+          if (mLabel) mLabel.textContent = 'Theme: Obsidian Cyber (Click to toggle)';
+        }
+      }
+
+      // Update settings tab dropdown if present
+      const settingsSelect = document.getElementById('demo-settings-theme-select');
+      if (settingsSelect && settingsSelect.value !== this.currentTheme) {
+        settingsSelect.value = this.currentTheme;
+      }
+
+      // Update meta theme-color for browser address bars
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+      if (metaThemeColor) {
+        metaThemeColor.setAttribute('content', this.currentTheme === 'steam' ? '#171d25' : '#0b0f19');
+      }
+
+      if (notify && typeof Toast !== 'undefined') {
+        const themeName = this.currentTheme === 'steam' ? 'Steam Classic' : 'Obsidian Cyber';
+        Toast.show(`🎨 Switched visual theme to <strong>${themeName}</strong>!`, 'info');
+      }
+    },
+
+    toggleTheme() {
+      const nextTheme = this.currentTheme === 'steam' ? 'obsidian' : 'steam';
+      this.setTheme(nextTheme, true);
+    },
+
+    bindEvents() {
+      const navBtn = document.getElementById('theme-toggle');
+      if (navBtn) {
+        navBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          this.toggleTheme();
+        });
+      }
+
+      const mobileBtn = document.getElementById('mobile-theme-toggle');
+      if (mobileBtn) {
+        mobileBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          this.toggleTheme();
+        });
+      }
+
+      const settingsSelect = document.getElementById('demo-settings-theme-select');
+      if (settingsSelect) {
+        settingsSelect.addEventListener('change', (e) => {
+          this.setTheme(e.target.value, true);
+        });
+      }
+    }
+  };
+
+  /* ==========================================================================
      1. TOAST NOTIFICATION ENGINE
      ========================================================================== */
   const Toast = {
@@ -1351,8 +1460,12 @@
           if (backupToggle) backupToggle.checked = true;
           if (steamcmdToggle) steamcmdToggle.checked = true;
 
-          Toast.show('↺ Configuration restored to factory defaults.', 'info');
-          this.appendConsoleLog('Config', 'Restored all settings to default values.');
+          const themeSelect = document.getElementById('demo-settings-theme-select');
+          if (themeSelect) themeSelect.value = 'steam';
+          ThemeManager.setTheme('steam', false);
+
+          Toast.show('↺ Configuration restored to factory defaults (Steam Theme).', 'info');
+          this.appendConsoleLog('Config', 'Restored all settings to default values (Theme: Steam).');
         });
       }
     },
@@ -1590,6 +1703,7 @@
      INITIALIZATION ON DOM READY
      ========================================================================== */
   function onReady() {
+    ThemeManager.init();
     Toast.init();
     ClipboardManager.init();
     PlatformTabsManager.init();

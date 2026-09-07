@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="steam">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,7 +7,7 @@
   <meta name="description" content="A modern, cross-platform Steam Workshop Downloader, Mod Manager, and Folder Healer. Parallel SteamCMD downloads with collision-free worker staging, interactive localhost Web UI, automated update scanning with zip rollback backups, and zero-dependency packaging.">
   <meta name="keywords" content="Steam Workshop, SteamCMD, Mod Manager, Downloader, RimWorld, Stellaris, Cities Skylines, Project Zomboid, Folder Healer, PyInstaller">
   <meta name="author" content="someonenameguy">
-  <meta name="theme-color" content="#0b0f19">
+  <meta name="theme-color" content="#171d25">
   <link rel="canonical" href="https://someonenameguy.github.io/Workshop-Controller/">
   
   <!-- Open Graph / Meta -->
@@ -39,7 +39,11 @@
   <header class="navbar-wrapper" id="navbar">
     <div class="navbar container">
       <a href="#" class="nav-brand" aria-label="Workshop Controller Home">
-        <div class="brand-icon" aria-hidden="true">⚙️</div>
+        <div class="brand-icon" aria-hidden="true">
+          <svg class="brand-steam-svg" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+            <path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.029 4.524 4.524s-2.03 4.524-4.524 4.524h-.105l-4.076 2.911c0 .052.005.105.005.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.727L.436 14.819C1.847 20.04 6.47 24 11.979 24c6.627 0 12-5.373 12-12s-5.373-12-12-12zM7.545 18.21c-.443.766-1.42 1.028-2.187.585-.765-.443-1.026-1.42-.585-2.187.243-.42.66-.69 1.129-.768l1.976.817c-.035.568.107 1.139.467 1.553zm8.394-7.076c-1.248 0-2.262-1.013-2.262-2.262 0-1.248 1.014-2.262 2.262-2.262 1.249 0 2.262 1.014 2.262 2.262 0 1.249-1.013 2.262-2.262 2.262z"/>
+          </svg>
+        </div>
         <div class="brand-text-group">
           <span class="brand-title">Workshop <span>Controller</span></span>
           <span class="version-badge">v1.2.0</span>
@@ -65,6 +69,10 @@
           <span>Star</span>
           <span class="star-count">★ 240+</span>
         </a>
+        <button class="theme-toggle-btn" id="theme-toggle" aria-label="Toggle visual theme between Steam Classic and Obsidian Cyber" title="Switch Theme (Steam / Obsidian)">
+          <span class="theme-icon" aria-hidden="true">💨</span>
+          <span class="theme-label">Steam Theme</span>
+        </button>
         <a href="#quickstart" class="btn btn-primary btn-sm glow-on-hover">Get Started</a>
         <button class="mobile-toggle" id="mobile-menu-toggle" aria-label="Toggle Navigation Menu" aria-expanded="false" aria-controls="mobile-nav">
           <span></span>
@@ -82,6 +90,10 @@
       <a href="#quickstart" class="mobile-link">Quick Start</a>
       <a href="#games" class="mobile-link">Supported Games</a>
       <a href="#faq" class="mobile-link">FAQ</a>
+      <button class="theme-toggle-btn mobile-link" id="mobile-theme-toggle" style="justify-content: flex-start; width: 100%; text-align: left; padding: 0.6rem 0;">
+        <span class="theme-icon" aria-hidden="true">💨</span>
+        <span class="theme-label">Switch Theme (Steam / Obsidian)</span>
+      </button>
       <a href="https://github.com/someonenameguy/Workshop-Controller" target="_blank" rel="noopener noreferrer" class="mobile-link">View on GitHub ↗</a>
     </div>
   </header>
@@ -186,7 +198,11 @@
         <!-- Dashboard App Internal Header -->
         <div class="mockup-dashboard-header">
           <div class="mockup-brand-group">
-            <div class="brand-icon" style="width: 36px; height: 36px; font-size: 1.15rem;" aria-hidden="true">⚙️</div>
+            <div class="brand-icon" style="width: 36px; height: 36px; font-size: 1.15rem;" aria-hidden="true">
+              <svg class="brand-steam-svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                <path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.029 4.524 4.524s-2.03 4.524-4.524 4.524h-.105l-4.076 2.911c0 .052.005.105.005.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.727L.436 14.819C1.847 20.04 6.47 24 11.979 24c6.627 0 12-5.373 12-12s-5.373-12-12-12zM7.545 18.21c-.443.766-1.42 1.028-2.187.585-.765-.443-1.026-1.42-.585-2.187.243-.42.66-.69 1.129-.768l1.976.817c-.035.568.107 1.139.467 1.553zm8.394-7.076c-1.248 0-2.262-1.013-2.262-2.262 0-1.248 1.014-2.262 2.262-2.262 1.249 0 2.262 1.014 2.262 2.262 0 1.249-1.013 2.262-2.262 2.262z"/>
+              </svg>
+            </div>
             <div>
               <strong class="brand-title" style="font-size: 0.95rem;">Workshop Controller</strong>
               <div class="game-profile-badge" id="demo-header-game">RimWorld (AppID: 294100)</div>
@@ -389,6 +405,14 @@
                     <input type="text" id="demo-settings-path-input" class="queue-text-input full-width" value="C:\Games\RimWorld\Mods" readonly>
                     <button class="btn btn-secondary btn-sm" id="demo-btn-browse-path">Browse</button>
                   </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="demo-settings-theme-select">UI Theme &amp; Styling</label>
+                  <select id="demo-settings-theme-select" class="profile-select-control full-width">
+                    <option value="steam" selected>💨 Steam Classic (Navy / Petrol / Blue Glow)</option>
+                    <option value="obsidian">🌌 Obsidian Cyber (Dark Minimalist / Cyan)</option>
+                  </select>
                 </div>
               </div>
 
@@ -967,7 +991,11 @@ chmod +x ./packaging/build_linux.sh
     <div class="container footer-grid">
       <div class="footer-brand-col">
         <div class="nav-brand">
-          <div class="brand-icon" style="width: 34px; height: 34px;" aria-hidden="true">⚙️</div>
+          <div class="brand-icon" style="width: 34px; height: 34px;" aria-hidden="true">
+            <svg class="brand-steam-svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.029 4.524 4.524s-2.03 4.524-4.524 4.524h-.105l-4.076 2.911c0 .052.005.105.005.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.727L.436 14.819C1.847 20.04 6.47 24 11.979 24c6.627 0 12-5.373 12-12s-5.373-12-12-12zM7.545 18.21c-.443.766-1.42 1.028-2.187.585-.765-.443-1.026-1.42-.585-2.187.243-.42.66-.69 1.129-.768l1.976.817c-.035.568.107 1.139.467 1.553zm8.394-7.076c-1.248 0-2.262-1.013-2.262-2.262 0-1.248 1.014-2.262 2.262-2.262 1.249 0 2.262 1.014 2.262 2.262 0 1.249-1.013 2.262-2.262 2.262z"/>
+            </svg>
+          </div>
           <span class="brand-title">Workshop <span>Controller</span></span>
         </div>
         <p>Open-source Steam Workshop Downloader, Mod Manager, and Folder Healer with isolated worker concurrency.</p>
