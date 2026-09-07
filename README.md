@@ -22,6 +22,7 @@
   - [Windows](#windows)
   - [Linux / macOS](#linux--macos)
 - [Web Dashboard Overview](#-web-dashboard-overview)
+- [Steam-Style Tag Filtering & Search](#️-steam-style-tag-filtering--search)
 - [Multi-Game & Multi-Folder Profiles](#-multi-game--multi-folder-profiles)
 - [Mod Folder Healer & Refactorer](#-mod-folder-healer--refactorer)
 - [Building Standalone Executables](#-building-standalone-executables-zero-dependency-shipping)
@@ -49,14 +50,20 @@
   - Locally caches Steam Workshop metadata (titles, preview URLs, tags, timestamps) in `data/workshop_cache.json`.
   - Preview images and tags load instantly on initial startup and remain intact after mod deletions.
   - Expanded local discovery finds `ModIcon.png`, `Preview.png`, `Preview.jpeg`, and `Preview.webp`.
-- **Dynamic Tag Filtering & Search**:
-  - Dynamically extracts all available tags (game versions like `1.6`/`1.5`, frameworks, gameplay categories) across installed mods.
-  - Interactive tag filter dropdown with real-time mod counts and clickable tag pills on mod cards.
+- **Dynamic Steam-Style Tag Filtering & Search Sidebar**:
+  - Full-featured filter sidebar modeled after the official Steam Workshop interface.
+  - Dynamically organizes tags by **Categories** (types and game versions like `1.6`/`1.5`), **Required DLC**, and **Other Tags**.
+  - **Include (+) & Exclude (−) Tag Filtering**: Click `+` to require a tag or `−` to filter it out; interactive active filter chips with 1-click removal.
+  - Game-aware search input placeholder matching the currently active game profile.
+  - Interactive tag pills directly on mod cards for rapid 1-click filtering.
 - **Folder Refactor & Healer**:
   - Scans loose or third-party mods (e.g., direct zip extractions or mods named with numeric IDs).
   - Automatically discovers Workshop IDs from `About.xml`, descriptions, or URLs.
   - Resolves unlisted / mature mods (Steam API `result=9`) directly from local `About.xml` metadata.
   - Safely renames folders to friendly mod names and generates official `PublishedFileId.txt` and `.lastupdated` files.
+- **Resilient Downloads with Automatic Retries**:
+  - Automatic download retries with user-configurable max retry attempts (1–10) to mitigate transient Valve CDN drops.
+  - Dedicated 1-click **🔄 Retry Failed** action in the Download Queue as well as per-item manual retry controls.
 - **Smart Update Scanner**:
   - Scans installed mods and compares local timestamps against live Steam Workshop update timestamps.
   - Visual "Update Available" indicators and 1-click **Update All Outdated Mods**.
@@ -92,11 +99,27 @@ The application will verify or auto-download SteamCMD, launch the background ser
 
 | Tab | Description |
 |---|---|
-| **📦 Installed Mods** | Browse installed mods with banner images, tags, sizes, and update badges. Filter by search term, status (`All`, `Updates Available`, `Steam`, `Non-Steam`), or dynamic tags. |
-| **📥 Download Queue** | Paste single/multiple Workshop URLs, numeric IDs, or Steam Collections. Monitor parallel workers and real-time download speeds. |
+| **📦 Installed Mods** | Steam Workshop-style layout with search, special filters (`Updates Available`, `Steam`, `Non-Steam`), category/DLC tag sidebar with Include (`+`) / Exclude (`-`) toggles, active filter chips, mod size indicators, and 1-click update/delete actions. |
+| **📥 Download Queue** | Paste single/multiple Workshop URLs, numeric IDs, or Steam Collections. Monitor parallel worker cards, real-time download status, automatic retries, and 1-click **Retry Failed**. |
 | **🩺 Folder Refactor / Healer** | Scan loose mod directories, preview proposed title renames, and repair `PublishedFileId.txt` metadata with a live step-by-step progress bar. |
-| **⚙️ Settings** | Configure game profiles, custom mod paths, worker counts (1–8), automatic backups, Steam credentials, and custom SteamCMD paths. |
-| **📜 Console Logs** | Inspect real-time console logs streamed directly from SteamCMD worker subprocesses. |
+| **⚙️ Settings** | Configure game profiles, custom mod paths, worker counts (1–8), automatic retry attempts (1–10), automatic backups, Steam credentials, and custom SteamCMD paths. |
+| **📜 Console Logs** | Inspect real-time console logs streamed directly from SteamCMD worker subprocesses with auto-scroll and clear controls. |
+
+---
+
+## 🏷️ Steam-Style Tag Filtering & Search
+
+The **Installed Mods** view provides a Steam Workshop-accurate filtering sidebar:
+- **Search Bar**: Profile-aware search that filters mod titles, authors, package IDs, and descriptions in real time.
+- **Include (`+`) & Exclude (`-`) Filtering**:
+  - Click `+` on any tag row to require that tag on matching mods.
+  - Click `−` to exclude mods possessing that tag.
+  - Selected tags appear as colored active filter chips above the grid (`+ Version 1.5`, `− Translation`) with 1-click removal.
+- **Grouped Categories**:
+  - **Categories**: Mod types (`Mod`, `Translation`, `Scenario`) and sorted game version tags (`1.4`, `1.5`, `1.6`).
+  - **Required DLC**: Game-specific expansions (*Anomaly*, *Biotech*, *Ideology*, *Royalty*, etc.).
+  - **Other Tags**: Gameplay and framework classifications with real-time mod counts.
+- **Interactive Card Pills**: Click any tag pill on a mod card to instantly toggle its include filter.
 
 ---
 
