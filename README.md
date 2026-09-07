@@ -11,6 +11,7 @@
   <img src="https://img.shields.io/badge/FastAPI-0.110+-009688?logo=fastapi&logoColor=white" alt="FastAPI">
   <img src="https://img.shields.io/badge/Tests-33%20Passing-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/License-MIT-purple" alt="License">
+  <a href="https://deepwiki.com/someonenameguy/Workshop-Controller"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 </p>
 
 ---
