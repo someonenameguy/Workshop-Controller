@@ -44,8 +44,65 @@ class WorkerState(BaseModel):
     current_mod_title: Optional[str] = None
 
 
+def _clear_worker_dir(worker_dir: Path) -> None:
+    """Completely removes all files, symlinks, and subdirectories within worker_dir,
+    handling any OS errors or missing files gracefully, and ensures worker_dir is
+    recreated fresh and empty."""
+    try:
+        if not worker_dir.exists() and not worker_dir.is_symlink():
+            worker_dir.mkdir(parents=True, exist_ok=True)
+            return
+
+        if worker_dir.is_symlink() or not worker_dir.is_dir():
+            worker_dir.unlink(missing_ok=True)
+            worker_dir.mkdir(parents=True, exist_ok=True)
+            return
+
+        for item in list(worker_dir.iterdir()):
+            try:
+                if item.is_symlink() or not item.is_dir():
+                    try:
+                        item.unlink(missing_ok=True)
+                    except PermissionError:
+                        os.chmod(item, 0o777)
+                        item.unlink(missing_ok=True)
+                else:
+                    try:
+                        shutil.rmtree(item, ignore_errors=True)
+                    except Exception:
+                        pass
+                    if item.exists():
+                        def _handle_remove_readonly(func, path, _):
+                            try:
+                                os.chmod(path, 0o777)
+                                func(path)
+                            except Exception:
+                                pass
+                        try:
+                            shutil.rmtree(item, onerror=_handle_remove_readonly)
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+
+        try:
+            if any(worker_dir.iterdir()):
+                shutil.rmtree(worker_dir, ignore_errors=True)
+        except Exception:
+            pass
+    except Exception:
+        try:
+            shutil.rmtree(worker_dir, ignore_errors=True)
+        except Exception:
+            pass
+    finally:
+        worker_dir.mkdir(parents=True, exist_ok=True)
+
+
 class WorkerPool:
     """Manages parallel SteamCMD worker processes."""
+
+    _clear_worker_dir = staticmethod(_clear_worker_dir)
 
     def __init__(self):
         self.queue: asyncio.Queue[DownloadItem] = asyncio.Queue()
@@ -241,7 +298,7 @@ class WorkerPool:
     async def _worker_loop(self, worker_id: int) -> None:
         """Dedicated loop for worker instance worker_id."""
         worker_dir = TEMP_WORKERS_DIR / f"worker_{worker_id}"
-        worker_dir.mkdir(parents=True, exist_ok=True)
+        _clear_worker_dir(worker_dir)
 
         while self.is_running:
             try:
@@ -325,6 +382,8 @@ class WorkerPool:
         self, worker_id: int, worker_dir: Path, item: DownloadItem
     ) -> bool:
         """Executes a single SteamCMD download inside isolated worker_dir."""
+        _clear_worker_dir(worker_dir)
+
         exe_path = find_steamcmd_executable()
         if not exe_path:
             await self.log(worker_id, "SteamCMD not found. Attempting automatic setup...", "warn")
@@ -335,6 +394,7 @@ class WorkerPool:
                 item.error = f"SteamCMD setup failed: {e}"
                 item.message = "Failed: SteamCMD setup error"
                 await self.log(worker_id, f"SteamCMD setup failed: {e}", "error")
+                _clear_worker_dir(worker_dir)
                 return False
 
         # Build runscript
@@ -389,6 +449,7 @@ class WorkerPool:
             await proc.terminate()
             item.status = "cancelled"
             item.message = "Cancelled"
+            _clear_worker_dir(worker_dir)
             return False
         except Exception as e:
             download_failed = True
@@ -412,7 +473,7 @@ class WorkerPool:
         )
 
         if item.status == "cancelled":
-            shutil.rmtree(staging_mod_path, ignore_errors=True)
+            _clear_worker_dir(worker_dir)
             return False
 
         if not download_failed and staging_mod_path.is_dir() and any(staging_mod_path.iterdir()):
@@ -441,18 +502,17 @@ class WorkerPool:
                 item.progress = 100
                 item.message = f"Installed successfully to {final_path.name}"
                 await self.log(worker_id, f"Successfully downloaded and installed {item.title}!")
-                # Clean up staging content for this item
-                shutil.rmtree(staging_mod_path, ignore_errors=True)
+                _clear_worker_dir(worker_dir)
                 return True
             except Exception as e:
-                shutil.rmtree(staging_mod_path, ignore_errors=True)
+                _clear_worker_dir(worker_dir)
                 item.status = "failed"
                 item.error = f"Installation error: {e}"
                 item.message = "Failed during installation"
                 await self.log(worker_id, f"Failed installing {item.mod_id}: {e}", "error")
                 return False
         else:
-            shutil.rmtree(staging_mod_path, ignore_errors=True)
+            _clear_worker_dir(worker_dir)
             item.status = "failed"
             item.error = error_reason or "SteamCMD download failed or item empty."
             item.message = f"Download failed ({error_reason or 'Failure'})"

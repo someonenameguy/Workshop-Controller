@@ -178,6 +178,12 @@ async def test_index_page_steam_filter_sidebar():
         assert 'id="mods-search-input"' in html
         assert 'id="btn-reset-filters"' in html
         assert 'id="active-filter-chips"' in html
+        assert 'id="mods-sort-select"' in html
+        assert 'value="corrupted"' in html
+        assert 'value="name-asc"' in html
+        assert 'value="size-desc"' in html
+        assert 'value="updated-desc"' in html
+        assert 'value="id-asc"' in html
 
 
 

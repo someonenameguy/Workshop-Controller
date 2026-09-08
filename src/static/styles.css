@@ -774,6 +774,43 @@ body {
   flex-wrap: wrap;
 }
 
+.mods-sort-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sort-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.sort-select {
+  background-color: #212c3d;
+  border: 1px solid #2a3f5a;
+  border-radius: 4px;
+  color: #c6d4df;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 6px 10px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sort-select:focus,
+.sort-select:hover {
+  border-color: #67c1f5;
+  box-shadow: 0 0 6px rgba(103, 193, 245, 0.3);
+}
+
+.sort-select option {
+  background-color: #17202d;
+  color: #c6d4df;
+}
+
 .mods-summary-row {
   display: flex;
   align-items: center;
@@ -910,6 +947,11 @@ body {
   box-shadow: 0 0 12px rgba(245, 158, 11, 0.2);
 }
 
+.mod-card.is-corrupted {
+  border-color: rgba(239, 68, 68, 0.6);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
+}
+
 .mod-thumbnail {
   width: 100%;
   height: 160px;
@@ -943,6 +985,34 @@ body {
   padding: 4px 8px;
   border-radius: var(--radius-sm);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.mod-corrupted-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: linear-gradient(135deg, #dc2626, #991b1b);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  letter-spacing: 0.5px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.corrupted-size {
+  color: #f87171;
+  font-weight: 700;
+}
+
+.text-danger {
+  color: #ef4444;
 }
 
 .mod-body {

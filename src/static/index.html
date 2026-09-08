@@ -77,6 +77,7 @@
                 <option value="updates">Updates Available Only</option>
                 <option value="steam">Steam Workshop Only</option>
                 <option value="non-steam">Non-Steam / Local Only</option>
+                <option value="corrupted">Corrupted (0 Bytes) Only</option>
               </select>
             </div>
 
@@ -105,6 +106,19 @@
                 <div class="active-filter-chips" id="active-filter-chips"></div>
               </div>
               <div class="toolbar-actions">
+                <div class="mods-sort-wrap">
+                  <label for="mods-sort-select" class="sort-label">Sort by:</label>
+                  <select id="mods-sort-select" class="sort-select">
+                    <option value="name-asc">Title (A - Z)</option>
+                    <option value="name-desc">Title (Z - A)</option>
+                    <option value="size-desc">Size (Largest first)</option>
+                    <option value="size-asc">Size (Smallest first)</option>
+                    <option value="updated-desc">Recently Updated</option>
+                    <option value="updated-asc">Least Recently Updated</option>
+                    <option value="id-asc">Workshop ID (Ascending)</option>
+                    <option value="id-desc">Workshop ID (Descending)</option>
+                  </select>
+                </div>
                 <button class="btn btn-primary" id="btn-check-updates">
                   🔄 Check for Updates
                 </button>

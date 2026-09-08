@@ -20,6 +20,7 @@ class WorkshopApp {
     this.isShuttingDown = false;
     this.includedTags = new Set();
     this.excludedTags = new Set();
+    this.currentSort = "name-asc";
   }
 
   async init() {
@@ -60,6 +61,14 @@ class WorkshopApp {
     const modsFilterSelect = document.getElementById("mods-filter-select");
     if (modsFilterSelect) {
       modsFilterSelect.addEventListener("change", () => this.renderMods());
+    }
+
+    const modsSortSelect = document.getElementById("mods-sort-select");
+    if (modsSortSelect) {
+      modsSortSelect.addEventListener("change", (e) => {
+        this.currentSort = e.target.value;
+        this.renderMods();
+      });
     }
 
     const btnResetFilters = document.getElementById("btn-reset-filters");
@@ -707,12 +716,17 @@ class WorkshopApp {
     const search = searchInput ? searchInput.value.toLowerCase().trim() : "";
     const filterSelect = document.getElementById("mods-filter-select");
     const filter = filterSelect ? filterSelect.value : "all";
+    const sortSelect = document.getElementById("mods-sort-select");
+    if (sortSelect) {
+      this.currentSort = sortSelect.value;
+    }
 
     const filtered = this.installedMods.filter(mod => {
       // Special filter dropdown
       if (filter === "updates" && !mod.update_available) return false;
       if (filter === "steam" && mod.is_non_steam) return false;
       if (filter === "non-steam" && !mod.is_non_steam) return false;
+      if (filter === "corrupted" && (mod.size_bytes || 0) > 0) return false;
 
       const modTags = Array.isArray(mod.tags)
         ? mod.tags.map(t => String(t).trim())
@@ -744,6 +758,41 @@ class WorkshopApp {
       return true;
     });
 
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (this.currentSort) {
+        case "name-desc":
+          return (b.name || "").localeCompare(a.name || "");
+        case "size-desc":
+          return (b.size_bytes || 0) - (a.size_bytes || 0);
+        case "size-asc":
+          return (a.size_bytes || 0) - (b.size_bytes || 0);
+        case "updated-desc": {
+          const timeA = a.remote_updated_time || a.local_updated_time || 0;
+          const timeB = b.remote_updated_time || b.local_updated_time || 0;
+          return timeB - timeA;
+        }
+        case "updated-asc": {
+          const timeA = a.remote_updated_time || a.local_updated_time || 0;
+          const timeB = b.remote_updated_time || b.local_updated_time || 0;
+          return timeA - timeB;
+        }
+        case "id-asc": {
+          const idA = String(a.mod_id || "");
+          const idB = String(b.mod_id || "");
+          return idA.localeCompare(idB, undefined, { numeric: true, sensitivity: "base" });
+        }
+        case "id-desc": {
+          const idA = String(a.mod_id || "");
+          const idB = String(b.mod_id || "");
+          return idB.localeCompare(idA, undefined, { numeric: true, sensitivity: "base" });
+        }
+        case "name-asc":
+        default:
+          return (a.name || "").localeCompare(b.name || "");
+      }
+    });
+
     const showingCountEl = document.getElementById("mods-showing-count");
     if (showingCountEl) {
       showingCountEl.textContent = `Showing ${filtered.length} of ${this.installedMods.length} mods`;
@@ -764,15 +813,20 @@ class WorkshopApp {
         thumbHtml = `<img src="/api/local-preview?path=${encodeURIComponent(mod.preview_image_path)}" alt="${this.escapeHtml(mod.name)}" loading="lazy" ${imgFallback}>`;
       }
 
+      const isCorrupted = (mod.size_bytes || 0) <= 0;
       const sizeMb = (mod.size_bytes / (1024 * 1024)).toFixed(1);
+      const corruptedBadge = isCorrupted
+        ? `<div class="mod-corrupted-badge">⚠️ 0 B (CORRUPTED)</div>`
+        : "";
       const updateBadge = mod.update_available
         ? `<div class="mod-update-badge">UPDATE AVAILABLE</div>`
         : "";
 
       return `
-        <div class="mod-card ${mod.update_available ? "has-update" : ""}">
+        <div class="mod-card ${mod.update_available ? "has-update" : ""} ${isCorrupted ? "is-corrupted" : ""}">
           <div class="mod-thumbnail">
             ${thumbHtml}
+            ${corruptedBadge}
             ${updateBadge}
           </div>
           <div class="mod-body">
@@ -790,7 +844,9 @@ class WorkshopApp {
               ` : ""}
               <div class="mod-meta-row">
                 <span>Size:</span>
-                <span>${sizeMb} MB</span>
+                ${isCorrupted
+                  ? `<span class="corrupted-size">0 Bytes (Corrupted)</span>`
+                  : `<span>${sizeMb} MB</span>`}
               </div>
             </div>
             ${mod.tags && mod.tags.length > 0 ? `
@@ -804,11 +860,13 @@ class WorkshopApp {
               </div>
             ` : ""}
             <div class="mod-footer">
-              ${mod.update_available && !mod.is_non_steam ? `
+              ${isCorrupted && mod.mod_id ? `
+                <button class="btn btn-warning btn-sm" onclick="app.redownloadMod('${mod.mod_id}', this)" title="Mod appears corrupted or 0 bytes. Redownload now.">🔄 Redownload</button>
+              ` : (mod.update_available && !mod.is_non_steam ? `
                 <button class="btn btn-warning btn-sm" onclick="app.updateSingleMod('${mod.mod_id}', this)">
                   ⬆️ Update
                 </button>
-              ` : ""}
+              ` : "")}
               <button class="btn btn-secondary btn-sm" onclick="app.openFolder('${encodeURIComponent(mod.folder_path)}')">
                 📁 Folder
               </button>
@@ -914,6 +972,32 @@ class WorkshopApp {
       if (btnElement) {
         btnElement.disabled = false;
         btnElement.innerHTML = origHtml || "⬆️ Update";
+      }
+    }
+  }
+
+  async redownloadMod(modId, btnElement = null) {
+    let origHtml = "";
+    if (btnElement) {
+      origHtml = btnElement.innerHTML;
+      btnElement.disabled = true;
+      btnElement.innerHTML = `<span class="btn-spinner"></span> Redownloading...`;
+    }
+    try {
+      const res = await fetch("/api/mods/download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input_text: String(modId) }),
+      });
+      const data = await res.json();
+      this.showToast(`Enqueued mod ${modId} for redownload.`, "success");
+      this.switchTab("queue");
+    } catch (e) {
+      this.showToast(`Failed: ${e.message}`, "error");
+    } finally {
+      if (btnElement) {
+        btnElement.disabled = false;
+        btnElement.innerHTML = origHtml || "🔄 Redownload";
       }
     }
   }
